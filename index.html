@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frentistas del Futuro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="barra">
+  <div class="marca">Frentistas <em>del Futuro</em><span>Sevilla · 2126</span></div>
+  <nav class="pasos">
+    <button data-paso="ciudad"><b>0</b> Ciudad</button>
+    <button data-paso="planta" disabled><b>1</b> Planta</button>
+    <button data-paso="fachada" disabled><b>2</b> Fachada</button>
+    <button data-paso="casa" disabled><b>3</b> Casa</button>
+    <button id="creditos" class="creditos">Créditos</button>
+  </nav>
+</header>
+
+<div id="escena3d" hidden></div>
+<div class="lote-info" id="loteInfo" hidden></div>
+
+<section id="intro" class="pantalla activa">
+  <div class="intro-texto">
+    <p class="volanta">Una ficción sobre la Casa Planes y la retromanía</p>
+    <h1>Sevilla, 2126.<br>Ya nadie inventa fachadas: <em>se recortan.</em></h1>
+    <p>Los frentistas del futuro son herederos de los yeseros italianos y andaluces que modelaban las fachadas de las casas chorizo. Su material es el archivo: fragmentos de casas coloniales, italianizantes, francesas, art déco, racionalistas y brutalistas, recortados de fotografías y pegados de nuevo.</p>
+    <p>Elegís una parcela real de calle Feria, trazás la planta y sus patios, componés la fachada con el catálogo y le ponés techo. Casa por casa, el barrio se vuelve un collage.</p>
+    <button id="empezar" class="btn primario grande">Ir a calle Feria →</button>
+  </div>
+  <div class="intro-fachada" id="introFachada"></div>
+</section>
+
+<section id="ciudad" class="pantalla capa">
+  <div class="hud">
+    <h2><span>0</span> Calle Feria</h2>
+    <p class="ayuda">El parcelario y las alturas son los reales del Catastro. Pasá el mouse por las parcelas y hacé clic en una para construir. Las casas terminadas quedan en el barrio; tocalas para editarlas.</p>
+    <dl class="datos" id="datosCiudad"></dl>
+    <button id="irFeria" class="btn primario">Empezar por Feria 37 →</button>
+    <div class="acciones"><button id="vistaAerea" class="btn">Recentrar</button><button id="borrarCiudad" class="btn">Vaciar</button></div>
+    <p class="ayuda">Arrastrá para orbitar · rueda para acercar · clic derecho para desplazar</p>
+  </div>
+</section>
+
+<section id="planta" class="pantalla">
+  <aside class="panel">
+    <h2><span>1</span> La planta</h2>
+    <p class="lote-titulo" id="loteTitulo"></p>
+    <p class="ayuda">Es la forma real de la parcela. Agregá patios, arrastralos y estirá el punto de la esquina para cambiar su tamaño. Lo que no es patio se construye.</p>
+    <button id="agregarPatio" class="btn">+ Agregar patio</button>
+    <ul id="listaPatios" class="lista"></ul>
+    <dl class="datos" id="datosPlanta"></dl>
+    <button id="aFachada" class="btn primario">Seguir con la fachada →</button>
+  </aside>
+  <div class="lienzo"><svg id="svgPlanta"></svg></div>
+</section>
+
+<section id="fachada" class="pantalla">
+  <div class="catalogo">
+    <h2><span>2</span> El catálogo</h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="filtros" id="filtros"></div>
+    <div class="burbujas" id="burbujas"></div>
+    <div class="sugerencias" id="sugerencias"></div>
+  </div>
+  <div class="obra">
+    <div class="diseno">
+      <div class="ajuste">Pisos <button data-ajuste="pisos:-1">−</button><b id="pisosN"></b><button data-ajuste="pisos:1">+</button></div>
+      <div class="ajuste">Módulos <button data-ajuste="modulos:-1">−</button><b id="modulosN"></b><button data-ajuste="modulos:1">+</button></div>
+      <p>Tocá cada hueco de la fachada para cambiarlo: puerta, ventana, balcón o muro ciego.</p>
+    </div>
+    <div class="elevacion" id="elevacion"></div>
+    <div class="encargo">
+      <h3>Tu encargo</h3>
+      <ul id="carrito"></ul>
+      <div class="pie"><p id="faltan"></p><button id="aCasa" class="btn primario" disabled>Ver en volumen →</button></div>
+    </div>
+  </div>
+</section>
+
+<section id="casa" class="pantalla capa">
+  <div class="hud">
+    <h2><span>3</span> La casa</h2>
+    <label class="rotulo-hud">Techo</label>
+    <div class="techos" id="techos"></div>
+    <div class="seg"><button data-vista="axo">Axonométrica</button><button data-vista="frente">Frente</button><button data-vista="planta">Planta</button></div>
+    <label class="corte">Cortar para ver las plantas<input type="range" id="corte" min="0" max="1000" value="1000"><span id="corteTxt">Sin corte</span></label>
+    <div class="acciones"><button id="volverFachada" class="btn">← Fachada</button><button id="captura" class="btn">Descargar imagen</button></div>
+    <button id="guardarCasa" class="btn primario">Guardar y volver al barrio →</button>
+  </div>
+  <aside class="ficha" id="ficha"></aside>
+</section>
+
+<dialog id="dialogoCreditos">
+  <h3>Créditos</h3>
+  <p>Los fragmentos del catálogo son recortes de fotografías de Wikimedia Commons, usadas según sus licencias:</p>
+  <ul id="listaCreditos"></ul>
+  <form method="dialog"><button class="btn">Cerrar</button></form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/imagenes.js"></script>
+<script src="js/barrio.js"></script>
+<script src="js/catalogo.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/planta.js"></script>
+<script src="js/fachada.js"></script>
+<script src="js/escena.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

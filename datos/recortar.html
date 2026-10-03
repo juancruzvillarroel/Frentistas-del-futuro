@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Recortador</title>
+<style>body{margin:0;background:#222;color:#ddd;font:11px sans-serif}#g{display:flex;flex-wrap:wrap;gap:6px;padding:6px;align-items:flex-end}
+figure{margin:0;background:repeating-conic-gradient(#555 0 25%,#444 0 50%) 0 0/16px 16px}img{display:block;height:170px}figcaption{background:#111;padding:2px}</style></head>
+<body><p id="estado">…</p><div id="g"></div>
+<script src="recortes.js"></script><script>
+// Baja cada foto de Commons, la recorta, la guarda en datos/recortes/ y arma creditos.json. Con ?solo=id1,id2 rehace algunas.
+const solo = new URLSearchParams(location.search).get('solo')?.split(',');
+const MAX = 720;
+const guardar = (nombre, cuerpo) => fetch(`/guardar?nombre=${encodeURIComponent(nombre)}`, { method: 'POST', body: cuerpo });
+const cargar = async url => { const i = new Image(); i.crossOrigin = 'anonymous'; i.src = url; await i.decode(); return i; };
+(async () => {
+  const info = {}, creditos = [], g = document.getElementById('g'), est = document.getElementById('estado');
+  const fotos = [...new Set(RECORTES.map(r => r.f))];
+  for (const f of fotos) {
+    const j = await (await fetch(`https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent('File:' + f)}&prop=imageinfo&iiprop=url|extmetadata|size&iiurlwidth=2400&format=json&origin=*`)).json();
+    const ii = Object.values(j.query.pages)[0].imageinfo[0], m = ii.extmetadata;
+    info[f] = ii;
+    const autor = (m.Artist?.value || '').replace(/<[^>]+>/g, '').trim();
+    creditos.push({ archivo: f, autor, licencia: m.LicenseShortName?.value, url: ii.descriptionurl });
+  }
+  for (const r of RECORTES.filter(r => !solo || solo.includes(r.id))) {
+    est.textContent = r.id;
+    const ii = info[r.f], img = await cargar(ii.thumburl || ii.url);
+    const [x0, y0, x1, y1] = r.r, sw = img.width * (x1 - x0), sh = img.height * (y1 - y0), k = Math.min(1, MAX / Math.max(sw, sh));
+    const c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+    const ctx = c.getContext('2d');
+    if (r.forma === 'arco') { // medio punto: el radio es la mitad del ancho
+      const rad = c.width / 2;
+      ctx.beginPath(); ctx.moveTo(0, c.height); ctx.lineTo(0, rad); ctx.arc(rad, rad, rad, Math.PI, 0); ctx.lineTo(c.width, c.height); ctx.closePath(); ctx.clip();
+    }
+    ctx.drawImage(img, img.width * x0, img.height * y0, sw, sh, 0, 0, c.width, c.height);
+    const png = r.forma === 'arco', url = png ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', .84);
+    await guardar(`recortes/${r.id}.${png ? 'png' : 'jpg'}`, url);
+    g.insertAdjacentHTML('beforeend', `<figure><img src="${url}"><figcaption>${r.id} · ${c.width}×${c.height}</figcaption></figure>`);
+  }
+  if (!solo) for (const t of TEXTURAS) {
+    est.textContent = t;
+    try {
+      const img = await cargar(`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/${t}/${t}_diff_1k.jpg`);
+      const c = document.createElement('canvas'); c.width = c.height = 512;
+      c.getContext('2d').drawImage(img, 0, 0, 512, 512);
+      const url = c.toDataURL('image/jpeg', .82);
+      await guardar(`texturas/${t}.jpg`, url);
+      g.insertAdjacentHTML('beforeend', `<figure><img src="${url}" style="height:90px"><figcaption>${t}</figcaption></figure>`);
+    } catch (e) { g.insertAdjacentHTML('beforeend', `<figure><figcaption>FALLÓ ${t}</figcaption></figure>`); }
+  }
+  if (!solo) await guardar('creditos.json', JSON.stringify(creditos, null, 1));
+  est.textContent = 'listo';
+})();
+</script></body></html>
