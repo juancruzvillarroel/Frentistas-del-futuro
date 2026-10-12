@@ -8,20 +8,20 @@ Trabajo final de facultad (arquitectura), hecho en equipo. Es un juego web.
 - **Ficción futura:** la casa transformada se reubica en **Sevilla, 2126**, por su genealogía compartida: la casa andaluza de patio central, la tradición de los frentistas y la inmigración.
 - **Los frentistas del futuro** ya no inventan fachadas: las arman recortando fragmentos de un catálogo de todas las épocas. El juego hace evidente la retromanía: solo podés recombinar el pasado, y la ficha final siempre dice "0 piezas nuevas".
 
-## Cómo se juega
-0. **Ciudad:** el barrio real de **calle Feria, Sevilla**, con el parcelario y las alturas del Catastro español. El lote inicial es **calle Feria 37** (parcela 5233602TG3453C, de esquina, con 20,4 m de frente sobre Feria). Al pasar el mouse la parcela se resalta; con un clic se construye ahí.
-1. **Planta:** la forma real de la parcela. Se agregan patios, se los mueve, se les cambia el tamaño y se les asigna una función.
-2. **Fachada:** se eligen pisos y módulos, y se toca cada hueco para que sea puerta, ventana, balcón o muro ciego. Después se viste con el catálogo, que funciona como un carrito con piezas en "globitos".
-3. **Casa:** volumen 3D en su lugar del barrio, con elección de techo, vistas y corte para ver las plantas. Al guardar, la casa queda en la ciudad (en el localStorage de cada navegador).
+## Versión 2 (rama `v2-retro`, octubre 2026): se rehízo desde cero
+El usuario pidió arrancar de nuevo la estética y el juego, manteniendo la ubicación (calle Feria, Sevilla, futuro).
+- **Estética retro** (retromanía): papel, tinta, azulejo, albero y almagra; tipografías IM Fell English + VT323; ventanas tipo sistema operativo viejo.
+- **Todas las piezas dibujadas en vectores con el mismo estilo. Nada de fotos recortadas** (decisión explícita del usuario).
+- **Catálogo como mapa de nodos que se despliega** (referencia: https://fede.dm/FIUBA-Map/): Archivo → sistema → categoría → época → pieza.
+- Juego 2D sin objetivo de ganar: armar casas con planta (ambientes + patios con función, suelo y objetos), corte automático y fachada; la lámina final lista las procedencias y siempre dice "0 piezas nuevas".
+- Pendiente: mapa de la ciudad con el parcelario real de calle Feria (`js/barrio.js`, `js/geo.js`) para elegir el lote; más piezas.
+- `js/escena.js`, `js/fachada.js`, `js/planta.js` e `js/imagenes.js` son de la v1 y ya no se usan.
 
-## Decisiones de diseño (pedidas por el equipo)
-- **Estética de collage realista**, nada de dibujito animado: fragmentos fotográficos recortados, con sombras y relieve.
-- **Catálogo por estilos de la casa argentina**, más lo moderno y un puente sevillano: colonial, italianizante, academicismo francés, art nouveau, neocolonial, art déco, racionalismo, chalet pintoresquista, brutalismo, contemporáneo y sevillano.
-- El barrio tiene que verse como la foto aérea real: muros encalados, tejas rojizas, azoteas claras, calles angostas y pocos árboles variados.
-- Pendiente: más piezas para contemporáneo y brutalismo, más ornamentos y, quizás, la fachada original de la Casa Planes como pieza.
+## Versión 1 (rama `main`): collage fotográfico + 3D
+Barrio de calle Feria con el Catastro (lote calle Feria 37, parcela 5233602TG3453C), fachada con fotos recortadas de Wikimedia y casa en 3D con three.js.
 
 ## Técnica
-- HTML + JS sin build ni frameworks. three.js 0.147 se carga desde jsdelivr (versión UMD, con `examples/js/controls/OrbitControls.js`).
+- HTML + JS sin build ni frameworks. Para probar: `node datos/servidor.js` → http://localhost:5173.
 - Se publica con **GitHub Pages** desde `main`: https://juancruzvillarroel.github.io/Frentistas-del-futuro/. Cada push a `main` actualiza el link.
 - Código en español, sin abstracciones de más. Leer `README.md` para saber qué archivo editar para cada cosa.
 - `js/imagenes.js` (fotos en data URL, unos 6 MB) y `js/barrio.js` (Catastro) **se generan**; no editarlos a mano:
