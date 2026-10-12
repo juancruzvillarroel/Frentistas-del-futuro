@@ -1,28 +1,26 @@
 /* Mapa del archivo: el catálogo como grafo que se despliega de izquierda a derecha
-   (inspirado en FIUBA Map). Archivo → sistema → categoría → época → pieza.
+   (inspirado en FIUBA Map). Cada paso del juego tiene su propio árbol:
+   planta (ambientes y patios), fachada (estilo → piezas) y techos.
    Cada elección abre la columna siguiente y deja marcado el recorrido. */
 
 window.Archivo = (() => {
-  const COLW = 210, NODOW = 172, ALTO = 40, ALTO_HOJA = 56, VGAP = 8, PADX = 18;
+  const COLW = 260, NODOW = 214, ALTO = 48, ALTO_HOJA = 74, VGAP = 9, PADX = 20, PADY = 18;
+  const clampY = (y, max) => Math.max(PADY, Math.min(max, y));
 
-  function arbol(CAT) {
+  function arboles(CAT) {
+    const cat = id => CAT.categorias.find(c => c.id === id).nombre;
+    const orden = CAT.categorias.map(c => c.id);
     const hoja = (kind, d, sub) => ({ id: `${kind}:${d.id}`, label: d.nombre, sub, hoja: { kind, id: d.id } });
-    const porEra = (lista, kind, prefijo) => CAT.eras
-      .map(e => ({ id: `${prefijo}/${e.id}`, label: e.nombre,
-        children: lista.filter(d => CAT.eraDe(d.anio) === e.id).sort((a, b) => a.anio - b.anio).map(d => hoja(kind, d, d.epoca)) }))
-      .filter(n => n.children.length);
     return {
-      id: 'archivo', label: 'Archivo', sub: 'catálogo infinito', raiz: true,
-      children: [
-        { id: 'planta', label: 'Planta', sub: 'ambientes', vista: 'planta', children: CAT.ambientes.map(a => hoja('amb', a, `${a.w} × ${a.h} m`)) },
-        { id: 'patios', label: 'Patios', sub: 'tipos y objetos', vista: 'planta', children: [
-          { id: 'patios/tipos', label: 'Tipos de patio', children: CAT.patios.map(p => hoja('patio', p, p.funcion)) },
-          { id: 'patios/objetos', label: 'Objetos de patio', children: CAT.objetos.map(o => hoja('obj', o, 'para poner en un patio')) }
-        ] },
-        { id: 'fachada', label: 'Fachada', sub: 'piezas de todas las épocas', vista: 'fachada',
-          children: CAT.categorias.map(c => ({ id: `fachada/${c.id}`, label: c.nombre, children: porEra(CAT.fachada.filter(f => f.cat === c.id), 'fac', `fachada/${c.id}`) })) },
-        { id: 'techos', label: 'Techos', sub: 'se ven en el corte', vista: 'corte', children: porEra(CAT.techos, 'techo', 'techos') }
-      ]
+      planta: { id: 'raiz', label: 'Archivo', sub: 'ambientes y patios', raiz: true, children: [
+        { id: 'ambientes', label: 'Ambientes', sub: 'living, cocina, dormitorio…', children: CAT.ambientes.map(a => hoja('amb', a, `${a.w} × ${a.h} m`)) },
+        { id: 'patios', label: 'Patios', sub: 'tipos de patio', children: CAT.patios.map(p => hoja('patio', p, p.funcion)) },
+        { id: 'objetos', label: 'Objetos de patio', sub: 'fuente, naranjo, aljibe…', children: CAT.objetos.map(o => hoja('obj', o, 'va adentro de un patio')) }
+      ] },
+      fachada: { id: 'raiz', label: 'Archivo', sub: `${CAT.estilos.length} estilos`, raiz: true,
+        children: CAT.estilos.map(e => ({ id: `est:${e.id}`, label: e.nombre, sub: e.epoca,
+          children: CAT.fachada.filter(f => f.estilo === e.id).sort((a, b) => orden.indexOf(a.cat) - orden.indexOf(b.cat)).map(f => hoja('fac', f, `${cat(f.cat)} · ${f.epoca}`)) })) },
+      techos: { id: 'raiz', label: 'Archivo', sub: 'techos', raiz: true, children: CAT.techos.map(t => hoja('techo', t, t.epoca)) }
     };
   }
 
@@ -38,8 +36,7 @@ window.Archivo = (() => {
 
   // opts: { usos(hoja) → n, armado(hoja) → bool, thumb(hoja) → svg, onClick(nodo, col) }
   function render(el, raiz, camino, opts) {
-    const cols = columnas(raiz, camino);
-    const memo = new Map();
+    const cols = columnas(raiz, camino), memo = new Map();
     const usos = n => {
       if (memo.has(n.id)) return memo.get(n.id);
       const v = n.hoja ? opts.usos(n.hoja) : (n.children || []).reduce((a, c) => a + usos(c), 0);
@@ -47,26 +44,26 @@ window.Archivo = (() => {
     };
     const alto = n => n.hoja ? ALTO_HOJA : ALTO;
     const colH = c => c.reduce((a, n) => a + alto(n) + VGAP, -VGAP);
-    const H = Math.max(el.clientHeight - 4, ...cols.map(colH)) + 24;
+    const H = Math.max(260, ...cols.map(colH)) + PADY * 2;
     const W = PADX * 2 + (cols.length - 1) * COLW + NODOW;
 
-    const pos = new Map();
+    const pos = new Map(), abiertos = [raiz.id, ...camino];
     cols.forEach((c, ci) => {
-      let y = (H - colH(c)) / 2;
+      // Cada columna se acomoda a la altura del nodo que la abrió, para que las opciones aparezcan al lado.
+      const padre = ci > 1 && pos.get(abiertos[ci - 1]);
+      let y = padre ? clampY(padre.y + padre.h / 2 - colH(c) / 2, H - PADY - colH(c)) : (H - colH(c)) / 2;
       c.forEach(n => { pos.set(n.id, { x: PADX + ci * COLW, y, h: alto(n) }); y += alto(n) + VGAP; });
     });
 
+    const prevCols = el.dataset.raiz === raiz.sub ? +el.dataset.cols || 0 : 0;
     let lineas = '', nodos = '';
-    const prevCols = +el.dataset.cols || 0;
-    const abiertos = [raiz.id, ...camino];
     cols.forEach((c, ci) => {
       if (ci === 0) return;
       const padre = pos.get(abiertos[ci - 1]);
       if (!padre) return;
       for (const n of c) {
         const p = pos.get(n.id), x1 = padre.x + NODOW, y1 = padre.y + padre.h / 2, x2 = p.x, y2 = p.y + p.h / 2;
-        const on = camino[ci - 1] === n.id;
-        lineas += `<path d="M${x1} ${y1} C${x1 + 50} ${y1} ${x2 - 50} ${y2} ${x2} ${y2}" class="${on ? 'on' : ''}"/>`;
+        lineas += `<path d="M${x1} ${y1} C${x1 + 50} ${y1} ${x2 - 50} ${y2} ${x2} ${y2}" class="${camino[ci - 1] === n.id ? 'on' : ''}"/>`;
       }
     });
     cols.forEach((c, ci) => c.forEach(n => {
@@ -80,15 +77,16 @@ window.Archivo = (() => {
     }));
 
     el.innerHTML = `<div class="mapa" style="width:${W}px;height:${H}px"><svg class="lineas" width="${W}" height="${H}">${lineas}</svg>${nodos}</div>`;
+    if (cols.length > prevCols && prevCols) el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
     el.dataset.cols = cols.length;
-    if (cols.length > prevCols) el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+    el.dataset.raiz = raiz.sub;
 
     el.onclick = e => {
       const b = e.target.closest('.nodo'); if (!b) return;
-      const ci = +b.dataset.col, n = cols[ci].find(x => x.id === b.dataset.id);
-      opts.onClick(n, ci);
+      const ci = +b.dataset.col;
+      opts.onClick(cols[ci].find(x => x.id === b.dataset.id), ci);
     };
   }
 
-  return { arbol, render };
+  return { arboles, render };
 })();

@@ -10,50 +10,62 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div class="app">
-  <header class="topbar">
-    <div class="logo">
-      <h1>Frentistas del Futuro</h1>
-      <small>calle Feria · Sevilla · 2126 <b class="cursor">▮</b></small>
-    </div>
-    <input id="nombre" class="nombre" spellcheck="false" aria-label="Nombre de la casa">
-    <div class="acciones">
-      <button class="btn prim" id="b-remix" title="Arma una fachada al azar con piezas del archivo">⟲ Remix del archivo</button>
-      <button class="btn" id="b-original" title="Volver a la casa chorizo de partida">Casa chorizo</button>
-      <button class="btn" id="b-nueva">Nueva</button>
-      <button class="btn" id="b-guardar">Guardar</button>
-      <button class="btn" id="b-abrir">Abrir</button>
-      <button class="btn" id="b-png">Lámina PNG</button>
-      <button class="btn" id="b-svg">SVG</button>
-      <input type="file" id="f-abrir" accept=".json,application/json" hidden>
-    </div>
-  </header>
+<header class="topbar">
+  <div class="logo">
+    <h1>Frentistas del Futuro</h1>
+    <small>calle Feria · Sevilla · 2126 <b class="cursor">▮</b></small>
+  </div>
+  <label class="nombre-casa">Tu casa<input id="nombre" class="nombre" spellcheck="false"></label>
+  <div class="acciones">
+    <button class="btn prim" id="b-remix" title="Arma una fachada al azar con piezas del archivo">⟲ Remix del archivo</button>
+    <button class="btn" id="b-original" title="Volver a la casa chorizo de partida">Casa chorizo</button>
+    <button class="btn" id="b-nueva" title="Empezar con el lote vacío">Casa vacía</button>
+    <button class="btn" id="b-guardar" title="Descargar la casa como archivo .json">Guardar</button>
+    <button class="btn" id="b-abrir" title="Abrir una casa guardada">Abrir</button>
+    <input type="file" id="f-abrir" accept=".json,application/json" hidden>
+  </div>
+</header>
 
-  <section class="win archivo">
-    <div class="win-title"><i class="box"></i><span>Archivo · catálogo infinito</span><button class="plegar" id="b-plegar" title="Plegar / desplegar">▾</button></div>
+<nav class="pasos" id="pasos">
+  <button data-paso="planta"><i>1</i><span>Planta y patios</span></button>
+  <button data-paso="fachada"><i>2</i><span>Fachada</span></button>
+  <button data-paso="techos"><i>3</i><span>Techos y corte</span></button>
+  <button data-paso="lamina"><i>4</i><span>Lámina</span></button>
+</nav>
+
+<main>
+  <section class="intro">
+    <h2 id="paso-titulo"></h2>
+    <p id="paso-texto"></p>
+  </section>
+
+  <section class="win" id="archivo">
+    <div class="win-title"><i class="box"></i><span>Archivo · catálogo infinito</span></div>
+    <p class="win-ayuda">Hacé clic en un nodo para desplegar sus opciones. El número rojo dice cuántas veces lo usaste en tu casa.</p>
     <div class="archivo-mapa" id="archivo-mapa"></div>
   </section>
 
-  <main>
-    <section class="win mesa">
-      <div class="win-title"><i class="box"></i><span>Mesa de trabajo</span></div>
-      <nav class="tabs" id="vistas">
-        <button data-view="planta">Planta</button>
-        <button data-view="corte">Corte A–A</button>
-        <button data-view="fachada">Fachada</button>
-        <button data-view="lamina">Lámina</button>
-      </nav>
-      <div class="stage" id="stage"></div>
-      <div class="hint" id="hint"></div>
-    </section>
-    <aside class="win ficha">
-      <div class="win-title"><i class="box"></i><span>Ficha</span></div>
-      <div class="ficha-body" id="ficha-body"></div>
-    </aside>
-  </main>
+  <section class="exportar" id="exportar" hidden>
+    <button class="btn prim grande" id="b-png">Descargar lámina (PNG)</button>
+    <button class="btn grande" id="b-svg">Descargar dibujo (SVG)</button>
+  </section>
 
-  <footer class="status" id="status"></footer>
-</div>
+  <section class="trabajo" id="trabajo">
+    <div class="aviso" id="aviso"></div>
+    <div class="mesa-grid">
+      <section class="win mesa">
+        <div class="win-title"><i class="box"></i><span id="mesa-titulo">Planta</span></div>
+        <div class="stage" id="stage"></div>
+      </section>
+      <aside class="win ficha">
+        <div class="win-title"><i class="box"></i><span>Ficha</span></div>
+        <div class="ficha-body" id="ficha-body"></div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<footer class="status" id="status"></footer>
 <div id="toast" role="status"></div>
 <script src="js/catalogo.js"></script>
 <script src="js/archivo.js"></script>
