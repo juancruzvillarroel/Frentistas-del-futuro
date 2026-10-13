@@ -23,11 +23,13 @@
   const EST = id => byId(CAT.estilos, id);
   const pano = () => byId(CAT.panos, state.fachada.pano) || CAT.panos[0];
 
+  // Los pasos van en orden: primero los patios (el corazón de la casa), después los ambientes alrededor.
   const PASOS = {
-    planta: { n: 1, vista: 'planta', titulo: 'Planta y patios', texto: 'Abrí el archivo y elegí un ambiente, un patio o un objeto. Después hacé clic sobre la planta para ubicarlo, o arrastrá para dibujarlo del tamaño que quieras. Toda casa necesita al menos un patio.' },
-    fachada: { n: 2, vista: 'fachada', titulo: 'Fachada', texto: 'Cada estilo del archivo tiene sus piezas: puertas, ventanas, columnas, molduras, zócalos, remates y ornamentos. Elegí una y hacé clic sobre la fachada para colocarla. Mezclar épocas es exactamente lo que hacen los frentistas del futuro.' },
-    techos: { n: 3, vista: 'corte', titulo: 'Techos y corte', texto: 'El corte se arma solo con tu planta. Elegí un techo en el archivo y hacé clic sobre un ambiente del corte para ponérselo. La posición del corte se cambia en la ficha.' },
-    lamina: { n: 4, vista: 'lamina', titulo: 'Lámina', texto: 'La lámina junta planta, fachada y corte con el índice de procedencias: de qué época y lugar viene cada pieza que elegiste.' }
+    patios: { n: 1, vista: 'planta', titulo: 'Patios', sig: 'ambientes', texto: 'La casa empieza por sus patios. Elegí un tipo de patio en el archivo y hacé clic en el lote para ubicarlo, o arrastrá para dibujarlo del tamaño que quieras. Después tocalo para ajustar su tamaño, su función y sus objetos. Toda casa necesita al menos un patio.' },
+    ambientes: { n: 2, vista: 'planta', titulo: 'Ambientes', sig: 'fachada', texto: 'Con los patios ubicados, armá la casa alrededor: living, cocina, dormitorios, baño… Cada ambiente aparece equipado. Los patios quedan fijos; para cambiarlos, volvé al paso 1.' },
+    fachada: { n: 3, vista: 'fachada', titulo: 'Fachada', sig: 'techos', texto: 'Cada estilo del archivo tiene sus piezas: puertas, ventanas, columnas, molduras, zócalos, remates y ornamentos. Elegí una y hacé clic sobre la fachada para colocarla. Mezclar épocas es exactamente lo que hacen los frentistas del futuro.' },
+    techos: { n: 4, vista: 'corte', titulo: 'Techos y corte', sig: 'lamina', texto: 'El corte se arma solo con tu planta. Elegí un techo en el archivo y hacé clic sobre un ambiente del corte para ponérselo. La posición del corte se cambia en la ficha.' },
+    lamina: { n: 5, vista: 'lamina', titulo: 'Lámina', texto: 'La lámina junta planta, fachada y corte con el índice de procedencias: de qué época y lugar viene cada pieza que elegiste.' }
   };
 
   /* ---------- Estado ---------- */
@@ -63,7 +65,7 @@
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* sin guardado local */ } }
 
   let state = load() || casaInicial();
-  const ui = { paso: 'planta', camino: { planta: [], fachada: [], techos: [] }, tool: null, sel: null, drag: null };
+  const ui = { paso: 'patios', camino: { patios: [], ambientes: [], fachada: [], techos: [] }, tool: null, sel: null, drag: null };
   const ARBOLES = Archivo.arboles(CAT);
   const vista = () => PASOS[ui.paso].vista;
 
@@ -92,7 +94,7 @@
 
   function thumb(h) {
     if (h.kind === 'fac') { const d = F(h.id), w = FULL.has(d.cat) ? 3 : d.w; return `<svg viewBox="-0.4 -0.5 ${w + 0.8} ${d.h + 0.9}">${art(d, w, d.h)}</svg>`; }
-    if (h.kind === 'amb') { const a = A(h.id); return `<svg viewBox="-0.3 -0.3 ${a.w + 0.6} ${a.h + 0.6}"><rect width="${a.w}" height="${a.h}" fill="${a.id === 'galeria' ? 'url(#semi)' : a.color}" stroke="${C.tinta}" stroke-width="1.6"/></svg>`; }
+    if (h.kind === 'amb') { const a = A(h.id), w = Math.max(a.w, a.h), d = Math.min(a.w, a.h); return `<svg viewBox="-0.3 -0.3 ${w + 0.6} ${d + 0.6}"><rect width="${w}" height="${d}" fill="${a.id === 'galeria' ? 'url(#semi)' : a.color}" stroke="${C.tinta}" stroke-width="1.6"/>${equipar(a, 0, 0, w, d)}</svg>`; }
     if (h.kind === 'patio') { const p = PT(h.id); return `<svg viewBox="-0.3 -0.3 ${p.w + 0.6} ${p.h + 0.6}"><rect width="${p.w}" height="${p.h}" fill="url(#suelo-${p.suelo})" stroke="${C.tinta}" stroke-width="1.2"/></svg>`; }
     if (h.kind === 'obj') { const o = OB(h.id); return `<svg viewBox="-1.5 ${-o.alto - 0.2} 3 ${o.alto + 0.4}">${o.side()}</svg>`; }
     if (h.kind === 'techo') return `<svg viewBox="-0.8 -4.4 5.6 5"><rect x="0" y="0" width="4" height="0.6" fill="#f6efdf"/><rect x="-0.15" y="0" width="0.3" height="0.6" fill="${C.tinta}"/><rect x="3.85" y="0" width="0.3" height="0.6" fill="${C.tinta}"/>${T(h.id).draw(4)}</svg>`;
@@ -123,15 +125,35 @@
     return { vb: [-2.4, -1.6, d + 4.6, w + 3.2], body: s };
   }
 
+  // Dibuja el equipamiento de un ambiente dentro del rectángulo (X, Y, W, H): centrado, achicado si no entra
+  // y girado si así entra mejor. La galería lo repite a lo largo.
+  function equipar(a, X, Y, W, H) {
+    const eq = a.equipo; if (!eq) return '';
+    const [bw, bh] = eq.box, fit = (w, h) => Math.min(1, (W - 0.3) / w, (H - 0.3) / h);
+    const s0 = fit(bw, bh), s90 = fit(bh, bw), rot = s90 > s0 * 1.1, s = rot ? s90 : s0;
+    if (s < 0.3) return '';
+    const largo = Math.max(W, H), paso = (rot ? bw : bw) * s + 0.8, n = eq.repetir ? Math.max(1, Math.floor(largo / paso)) : 1;
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      const cx = W >= H ? X + W * (i + 0.5) / n : X + W / 2, cy = W >= H ? Y + H / 2 : Y + H * (i + 0.5) / n;
+      out += `<g transform="translate(${cx} ${cy}) rotate(${rot ? 90 : 0}) scale(${s}) translate(${-bw / 2} ${-bh / 2})">${eq.draw()}</g>`;
+    }
+    return `<g pointer-events="none">${out}</g>`;
+  }
+
   function planRoom(r, live) {
     const fill = r.patio ? `url(#suelo-${r.suelo})` : (r.tipo === 'galeria' ? 'url(#semi)' : A(r.tipo).color);
     const q = scrRect(r);
-    let s = `<g data-room="${r.id}" ${live ? 'style="cursor:move"' : ''}>`;
-    s += `<rect x="${q.X}" y="${q.Y}" width="${q.W}" height="${q.H}" fill="${fill}" stroke="${C.tinta}" stroke-width="${r.patio ? 1 : 2.2}"/>`;
-    if (r.patio) for (const o of r.objetos) { const [X, Y] = scr(r.x + o.x, r.y + o.y); s += `<g data-item="${o.id}" data-room="${r.id}" transform="translate(${X} ${Y})">${OB(o.tipo).plan()}</g>`; }
-    const fs = clamp(Math.min(q.W, q.H) / 4.5, 0.3, 0.65), cx = q.X + q.W / 2, cy = q.Y + q.H / 2;
-    s += txt(cx, cy, r.nombre, fs, { extra: `font-style="italic" ${halo}` });
-    s += txt(cx, cy + fs * 1.1, `${fmt(r.w * r.h)} m²`, fs * 0.85, { font: 'mono', extra: halo });
+    // En el paso Patios solo se tocan los patios (los ambientes se ven tenues); en Ambientes los patios quedan fijos.
+    const activo = live && (ui.paso === 'patios' ? r.patio : ui.paso === 'ambientes' && !r.patio);
+    const tenue = live && ui.paso === 'patios' && !r.patio;
+    let s = `<g ${activo ? `data-room="${r.id}" style="cursor:move"` : ''} ${tenue ? 'opacity="0.35"' : ''}>`;
+    s += `<rect x="${q.X}" y="${q.Y}" width="${q.W}" height="${q.H}" fill="${fill}" stroke="${C.tinta}" stroke-width="${r.patio ? 1.2 : 2.2}"/>`;
+    if (r.patio) for (const o of r.objetos) { const [X, Y] = scr(r.x + o.x, r.y + o.y); s += `<g ${activo ? `data-item="${o.id}" data-room="${r.id}"` : ''} transform="translate(${X} ${Y})">${OB(o.tipo).plan()}</g>`; }
+    else s += equipar(A(r.tipo), q.X, q.Y, q.W, q.H);
+    const fs = clamp(Math.min(q.W, q.H) / 6, 0.28, 0.48), x = q.X + 0.18, y = q.Y + fs + 0.12;
+    s += txt(x, y, r.nombre, fs, { anchor: 'start', extra: `font-style="italic" ${halo}` });
+    s += txt(x, y + fs * 0.95, `${fmt(r.w * r.h)} m²`, fs * 0.8, { anchor: 'start', font: 'mono', extra: halo });
     return s + '</g>';
   }
 
@@ -299,8 +321,11 @@
         : `Seleccionaste «${r.nombre}». Arrastralo para moverlo, tirá del cuadrito azul para cambiar su tamaño, o editalo en la ficha de la derecha.${r.patio ? ' Para sumarle objetos, abrí «Objetos de patio» en el archivo.' : ''}`;
     } else if (s && s.kind === 'item') { modo = 'sel'; cancelar = true; msg = 'Seleccionaste un objeto del patio. Arrastralo para moverlo; para quitarlo usá la ficha o la tecla Supr.'; }
     else if (s && s.kind === 'fac' && facEl(s.id)) { const d = F(facEl(s.id).el); modo = 'sel'; cancelar = true; msg = `Seleccionaste «${d.nombre}» (${d.epoca}). Arrastrala para moverla; en la ficha podés escalarla, espejarla o borrarla.`; }
-    else msg = { planta: 'Elegí algo en el archivo de arriba, o hacé clic en un ambiente de la planta para editarlo.', fachada: 'Elegí una pieza en el archivo de arriba, o hacé clic en una pieza de la fachada para editarla.',
-      corte: 'Hacé clic en un ambiente del corte para elegir su techo.', lamina: 'Exportá la lámina como imagen (PNG) o como dibujo vectorial (SVG).' }[v];
+    else msg = {
+      patios: state.rooms.some(r => r.patio) ? 'Elegí otro tipo de patio en el archivo, o tocá un patio de la planta para cambiar su tamaño, función u objetos. Cuando estén listos, seguí con los ambientes.' : 'Empezá eligiendo un tipo de patio en el archivo de arriba.',
+      ambientes: 'Elegí un ambiente en el archivo de arriba, o hacé clic en uno de la planta para editarlo. Los patios quedan fijos.',
+      fachada: 'Elegí una pieza en el archivo de arriba, o hacé clic en una pieza de la fachada para editarla.',
+      techos: 'Hacé clic en un ambiente del corte para elegir su techo.', lamina: 'Exportá la lámina como imagen (PNG) o como dibujo vectorial (SVG).' }[ui.paso];
     el.className = 'aviso ' + modo;
     el.innerHTML = `<span>${esc(msg)}</span>${cancelar ? `<button class="btn" id="b-cancelar">${t ? 'Cancelar' : 'Listo'}</button>` : ''}`;
     const b = $('#b-cancelar'); if (b) b.onclick = () => { ui.tool = null; ui.sel = null; commit(true); };
@@ -348,11 +373,17 @@
   }
 
   function setPaso(p) {
+    if (p === 'ambientes' && !state.rooms.some(r => r.patio)) { toast('Primero ubicá al menos un patio: la casa se arma alrededor de él.'); p = 'patios'; }
     ui.paso = p; ui.tool = null; ui.drag = null;
+    const r = ui.sel && ui.sel.kind === 'room' && room(ui.sel.id);
     if (ui.sel && ui.sel.kind === 'fac' && p !== 'fachada') ui.sel = null;
     if (ui.sel && ui.sel.kind !== 'fac' && p === 'fachada') ui.sel = null;
-    if (ui.sel && ui.sel.kind === 'item' && p !== 'planta') ui.sel = null;
+    if (ui.sel && ui.sel.kind === 'item' && p !== 'patios') ui.sel = null;
+    if (r && ((p === 'patios' && !r.patio) || (p === 'ambientes' && r.patio))) ui.sel = null;
     if (p === 'lamina') ui.sel = null;
+    const sig = PASOS[p].sig;
+    $('#b-siguiente').hidden = !sig;
+    if (sig) $('#b-siguiente').textContent = `Listo, seguir con: ${PASOS[sig].titulo} →`;
     document.querySelectorAll('#pasos button').forEach(b => b.classList.toggle('on', b.dataset.paso === p));
     const info = PASOS[p];
     $('#paso-titulo').innerHTML = `<b>Paso ${info.n}</b> ${info.titulo}`;
@@ -652,7 +683,7 @@
   $('#b-nueva').onclick = () => {
     if (!confirm('¿Empezar una casa vacía? Si no guardaste la actual, se pierde.')) return;
     state = { ...casaInicial(), nombre: 'Casa sin nombre', rooms: [], facade: [] };
-    nombre.value = state.nombre; ui.sel = null; ui.tool = null; setPaso('planta'); commit(true);
+    nombre.value = state.nombre; ui.sel = null; ui.tool = null; setPaso('patios'); commit(true);
   };
   $('#b-original').onclick = () => {
     if (!confirm('¿Volver a la casa chorizo original? Si no guardaste la actual, se pierde.')) return;
@@ -671,5 +702,7 @@
   $('#b-png').onclick = exportarPNG;
   $('#b-svg').onclick = () => bajar(slug() + '.svg', new Blob([drawLamina()], { type: 'image/svg+xml' }));
 
-  setPaso('planta'); renderStatus();
+  $('#b-siguiente').onclick = () => { const sig = PASOS[ui.paso].sig; if (!sig) return; setPaso(sig); if (ui.paso === sig) window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+  setPaso('patios'); renderStatus();
 })();

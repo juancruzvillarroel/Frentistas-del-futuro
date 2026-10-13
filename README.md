@@ -5,11 +5,12 @@ Juego del trabajo final sobre la Casa Planes y la retromanía. La casa chorizo d
 **Jugar:** `node datos/servidor.js` y abrir http://localhost:5173 (o el link de GitHub Pages).
 
 ## Cómo se juega
-La página se recorre en 4 pasos (barra fija arriba). En cada paso: arriba el **archivo** (mapa de nodos que se despliega, el número rojo cuenta cuántas veces usaste esa rama), un **aviso** que dice qué hacer, y abajo el dibujo grande con la **ficha** al costado.
-1. **Planta y patios:** ambientes, patios y objetos de patio. Elegís en el archivo y hacés clic (o arrastrás) en la planta. La planta está girada: calle Feria a la izquierda.
-2. **Fachada:** 17 estilos (clásico, mudéjar, gótico, renacimiento, barroco sevillano, colonial, italianizante, academicismo, art nouveau, regionalismo sevillano, neocolonial, art déco, racionalismo, pintoresquista, brutalismo, contemporáneo y Sevilla 2126), con 6 a 9 piezas cada uno. *Remix del archivo* arma una fachada al azar.
-3. **Techos y corte:** el corte sale solo de la planta. Elegís un techo y hacés clic en un ambiente del corte.
-4. **Lámina:** planta + fachada + corte + índice de procedencias. Se exporta en PNG o SVG.
+La página se recorre en 5 pasos en orden (barra fija arriba y botón *Listo, seguir con…* al final de cada uno). En cada paso: arriba el **archivo** (mapa de nodos que se despliega, el número rojo cuenta cuántas veces usaste esa rama), un **aviso** que dice qué hacer, y abajo el dibujo grande con la **ficha** al costado.
+1. **Patios:** primero se eligen, ubican y dimensionan los patios, con su función, suelo y objetos. Los ambientes se ven tenues y no se tocan. La planta está girada: calle Feria a la izquierda.
+2. **Ambientes:** se habilita cuando hay al menos un patio. Los ambientes aparecen equipados (cama, mesa, sillones, mesada, sanitarios…) y los patios quedan fijos.
+3. **Fachada:** 17 estilos (clásico, mudéjar, gótico, renacimiento, barroco sevillano, colonial, italianizante, academicismo, art nouveau, regionalismo sevillano, neocolonial, art déco, racionalismo, pintoresquista, brutalismo, contemporáneo y Sevilla 2126), con 6 a 9 piezas cada uno. *Remix del archivo* arma una fachada al azar.
+4. **Techos y corte:** el corte sale solo de la planta. Elegís un techo y hacés clic en un ambiente del corte.
+5. **Lámina:** planta + fachada + corte + índice de procedencias. Se exporta en PNG o SVG.
 - La casa se guarda sola en el navegador; *Guardar/Abrir* usa archivos `.json` para pasarla entre el grupo.
 
 ## Dónde se edita cada cosa

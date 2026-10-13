@@ -1,6 +1,6 @@
 /* Mapa del archivo: el catálogo como grafo que se despliega de izquierda a derecha
    (inspirado en FIUBA Map). Cada paso del juego tiene su propio árbol:
-   planta (ambientes y patios), fachada (estilo → piezas) y techos.
+   patios (tipos y objetos), ambientes, fachada (estilo → piezas) y techos.
    Cada elección abre la columna siguiente y deja marcado el recorrido. */
 
 window.Archivo = (() => {
@@ -12,11 +12,11 @@ window.Archivo = (() => {
     const orden = CAT.categorias.map(c => c.id);
     const hoja = (kind, d, sub) => ({ id: `${kind}:${d.id}`, label: d.nombre, sub, hoja: { kind, id: d.id } });
     return {
-      planta: { id: 'raiz', label: 'Archivo', sub: 'ambientes y patios', raiz: true, children: [
-        { id: 'ambientes', label: 'Ambientes', sub: 'living, cocina, dormitorio…', children: CAT.ambientes.map(a => hoja('amb', a, `${a.w} × ${a.h} m`)) },
-        { id: 'patios', label: 'Patios', sub: 'tipos de patio', children: CAT.patios.map(p => hoja('patio', p, p.funcion)) },
+      patios: { id: 'raiz', label: 'Archivo', sub: 'patios', raiz: true, children: [
+        { id: 'tipos', label: 'Tipos de patio', sub: 'elegí, ubicá y dimensioná', children: CAT.patios.map(p => hoja('patio', p, p.funcion)) },
         { id: 'objetos', label: 'Objetos de patio', sub: 'fuente, naranjo, aljibe…', children: CAT.objetos.map(o => hoja('obj', o, 'va adentro de un patio')) }
       ] },
+      ambientes: { id: 'raiz', label: 'Archivo', sub: 'ambientes', raiz: true, children: CAT.ambientes.map(a => hoja('amb', a, `${a.w} × ${a.h} m`)) },
       fachada: { id: 'raiz', label: 'Archivo', sub: `${CAT.estilos.length} estilos`, raiz: true,
         children: CAT.estilos.map(e => ({ id: `est:${e.id}`, label: e.nombre, sub: e.epoca,
           children: CAT.fachada.filter(f => f.estilo === e.id).sort((a, b) => orden.indexOf(a.cat) - orden.indexOf(b.cat)).map(f => hoja('fac', f, `${cat(f.cat)} · ${f.epoca}`)) })) },

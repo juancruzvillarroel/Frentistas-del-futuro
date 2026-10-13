@@ -87,6 +87,7 @@ main { padding: 26px var(--gutter) 70px; display: flex; flex-direction: column; 
   font-style: normal; font-size: 17px; line-height: 20px; text-align: center; border: 1px solid var(--tinta); }
 
 .exportar { display: flex; gap: 18px; flex-wrap: wrap; }
+.siguiente { display: flex; justify-content: flex-end; margin-top: 8px; }
 
 /* Mesa de trabajo */
 .trabajo { scroll-margin-top: 64px; display: flex; flex-direction: column; gap: 14px; }
