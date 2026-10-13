@@ -22,6 +22,7 @@ Barrio de calle Feria con el Catastro (lote calle Feria 37, parcela 5233602TG345
 
 ## Técnica
 - HTML + JS sin build ni frameworks. Para probar: `node datos/servidor.js` → http://localhost:5173.
+- Al publicar cambios, subir el número `?v=` de los css/js en `index.html` (GitHub Pages cachea 10 minutos y si no el grupo ve la versión vieja).
 - Se publica con **GitHub Pages** desde `main`: https://juancruzvillarroel.github.io/Frentistas-del-futuro/. Cada push a `main` actualiza el link.
 - Código en español, sin abstracciones de más. Leer `README.md` para saber qué archivo editar para cada cosa.
 - `js/imagenes.js` (fotos en data URL, unos 6 MB) y `js/barrio.js` (Catastro) **se generan**; no editarlos a mano:
