@@ -704,5 +704,8 @@
 
   $('#b-siguiente').onclick = () => { const sig = PASOS[ui.paso].sig; if (!sig) return; setPaso(sig); if (ui.paso === sig) window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
+  let resizeT;
+  window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(renderArchivo, 120); });
+
   setPaso('patios'); renderStatus();
 })();
