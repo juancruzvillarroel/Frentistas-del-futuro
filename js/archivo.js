@@ -5,7 +5,7 @@
    Cada elección abre el nivel siguiente y deja marcado el recorrido. */
 
 window.Archivo = (() => {
-  const NODOW = 214, ALTO = 50, ALTO_HOJA = 76, GAPX = 16, GAPY = 12, BANDA = 44, PAD = 18;
+  const NODOW = 214, ALTO = 50, ALTO_HOJA = 76, GAPX = 18, GAPY = 14, BANDA = 64, PAD = 18;
 
   function arboles(CAT) {
     const cat = id => CAT.categorias.find(c => c.id === id).nombre;
@@ -61,20 +61,25 @@ window.Archivo = (() => {
     });
     const H = y - BANDA + PAD;
 
-    // Conectores tipo organigrama: del nodo elegido baja a una línea, y de ahí a cada opción.
+    // Hilos: curvas irregulares, como trazos a mano, del nodo elegido a cada opción (pasan por detrás de las cajas).
+    const azar = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return ((h >>> 0) % 1000) / 1000; };
+    const hilo = (x1, y1, x2, y2, id, cls) => {
+      const dy = Math.max(40, y2 - y1), j1 = (azar(id) - 0.5) * 70, j2 = (azar(id + '*') - 0.5) * 70;
+      const d = (o) => `M${x1 + o} ${y1} C${x1 + j1 + o} ${y1 + dy * 0.55} ${x2 + j2 - o} ${y2 - dy * 0.5} ${x2 - o} ${y2}`;
+      return `<path class="${cls}" d="${d(0)}"/><path class="${cls} trazo" d="${d(azar(id + '#') * 3 - 1.5)}"/>`;
+    };
     const abiertos = [raiz.id, ...camino];
-    let lineas = '';
+    let lineas = '', rojas = '';
     nv.forEach((lista, li) => {
       if (li === 0) return;
       const p = pos.get(abiertos[li - 1]); if (!p) return;
-      const px = p.x + NODOW / 2, py = p.y + p.h, top = Math.min(...lista.map(n => pos.get(n.id).y)), bus = top - BANDA / 2;
-      const xs = lista.filter(n => pos.get(n.id).y === top).map(n => pos.get(n.id).x + NODOW / 2);
-      lineas += `<path d="M${px} ${py} V${bus} M${Math.min(px, ...xs)} ${bus} H${Math.max(px, ...xs)}"/>` + xs.map(x => `<path d="M${x} ${bus} V${top}"/>`).join('');
-      // El camino elegido va en rojo hasta la opción, aunque esté en una fila de más abajo (pasa por el hueco entre columnas).
-      const q = camino[li - 1] && pos.get(camino[li - 1]);
-      if (q) { const cx = q.x + NODOW / 2, gx = q.x - GAPX / 2;
-        lineas += q.y === top ? `<path class="on" d="M${px} ${py} V${bus} H${cx} V${q.y}"/>` : `<path class="on" d="M${px} ${py} V${bus} H${gx} V${q.y + q.h / 2} H${q.x}"/>`; }
+      const px = p.x + NODOW / 2, py = p.y + p.h;
+      for (const n of lista) {
+        const q = pos.get(n.id), on = camino[li - 1] === n.id, h = hilo(px, py, q.x + NODOW / 2, q.y, n.id, on ? 'on' : '');
+        if (on) rojas += h; else lineas += h;
+      }
     });
+    lineas += rojas;
 
     const prev = el.dataset.raiz === raiz.sub ? +el.dataset.niveles || 0 : 0;
     let nodos = '';
