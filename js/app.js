@@ -7,7 +7,7 @@
   const CAT = window.CATALOGO, C = CAT.colores;
   const G = 10;              // línea de suelo (y) en fachada y corte
   const SNAP = 0.5;          // grilla de la planta en metros
-  const KEY = 'frentistas-v2';
+  const KEY = 'frentistas-v3';
   const FULL = new Set(['moldura', 'zocalo']);  // piezas que ocupan todo el ancho
   const FONT = { serif: "'IM Fell English', Georgia, serif", sc: "'IM Fell English SC', Georgia, serif", mono: "VT323, 'Courier New', monospace" };
 
@@ -64,7 +64,9 @@
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* sin guardado local */ } }
 
-  let state = load() || casaInicial();
+  // Se arranca con el lote vacío; la casa chorizo de Caballito queda como ejemplo en el botón «Casa chorizo».
+  const casaVacia = () => ({ ...casaInicial(), nombre: 'Casa sin nombre', rooms: [], facade: [] });
+  let state = load() || casaVacia();
   const ui = { paso: 'patios', camino: { patios: [], ambientes: [], fachada: [], techos: [] }, tool: null, sel: null, drag: null };
   const ARBOLES = Archivo.arboles(CAT);
   const vista = () => PASOS[ui.paso].vista;
@@ -532,8 +534,11 @@
     else if (v === 'corte') downCorte(e);
   });
 
+  window.addEventListener('pointercancel', () => { ui.drag = null; renderView(); });
+
   function downPlan(e) {
     const p = pt(e), tool = ui.tool, t = e.target;
+    ui.drag = null;   // si un arrastre anterior quedó colgado, se descarta
     if (tool && (tool.kind === 'amb' || tool.kind === 'patio')) { const x = snap(p.x), y = snap(p.y); ui.drag = { mode: 'draw', x0: x, y0: y, x1: x, y1: y }; return renderView(); }
     if (tool && tool.kind === 'obj') {
       const r = state.rooms.find(r => r.patio && inside(p, r));
@@ -682,7 +687,7 @@
   $('#b-remix').onclick = remix;
   $('#b-nueva').onclick = () => {
     if (!confirm('¿Empezar una casa vacía? Si no guardaste la actual, se pierde.')) return;
-    state = { ...casaInicial(), nombre: 'Casa sin nombre', rooms: [], facade: [] };
+    state = casaVacia();
     nombre.value = state.nombre; ui.sel = null; ui.tool = null; setPaso('patios'); commit(true);
   };
   $('#b-original').onclick = () => {
