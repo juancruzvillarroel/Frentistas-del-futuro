@@ -632,28 +632,85 @@
     if ((e.key === 'Delete' || e.key === 'Backspace') && ui.sel) { e.preventDefault(); borrarSel(); }
   });
 
-  /* ---------- Remix del archivo ---------- */
-  function remix() {
-    const pick = cat => { const l = CAT.fachada.filter(e => e.cat === cat); return l[Math.floor(Math.random() * l.length)]; };
+  /* ---------- Remix del archivo: una casa entera al azar (planta, techos del corte y fachada) ---------- */
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const elegir = l => l[Math.floor(Math.random() * l.length)];
+  const mezclar = l => l.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(v => v[1]);
+
+  // La planta se arma en franjas desde la calle hacia el fondo: adelante zaguán y living, después
+  // franjas de ambientes y de patios alternadas (patio entero, central o lateral) y al fondo un patio o huerta.
+  function remixPlanta() {
+    const { w, d } = state.lot, rooms = [];
+    const amb = (tipo, x, y, rw, rh) => rooms.push({ id: uid(), tipo, patio: false, nombre: A(tipo).nombre, x, y, w: rw, h: rh, alto: snap(rnd(3.6, 5), 0.1), techo: elegir(CAT.techos).id });
+    const pat = (tipo, x, y, rw, rh) => {
+      const p = PT(tipo), n = Math.floor(rnd(1, 4)), largo = rw >= rh;
+      const objetos = Array.from({ length: n }, (_, i) => ({ id: uid(), tipo: elegir(CAT.objetos).id,
+        x: snap(largo ? rw * (i + 1) / (n + 1) : rw / 2, 0.25), y: snap(largo ? rh / 2 : rh * (i + 1) / (n + 1), 0.25) }));
+      rooms.push({ id: uid(), tipo, patio: true, nombre: p.nombre, x, y, w: rw, h: rh, objetos,
+        funcion: Math.random() < 0.5 ? p.funcion : elegir(CAT.funciones), suelo: Math.random() < 0.6 ? p.suelo : elegir(CAT.suelos).id });
+    };
+    const partir = (x0, ancho, n, min) => { n = Math.max(1, Math.min(n, Math.floor(ancho / min))); const a = snap(ancho / n); return Array.from({ length: n }, (_, i) => [x0 + i * a, i < n - 1 ? a : ancho - (n - 1) * a]); };
+    const pool = mezclar(['comedor', 'cocina', 'dormitorio', 'dormitorio', 'bano', 'estudio', 'taller', 'dormitorio']);
+    const siguiente = () => pool.length ? pool.shift() : elegir(['dormitorio', 'estudio', 'comedor']);
+
+    // Frente sobre calle Feria
+    const fl = snap(rnd(4.5, 5.5)), zIzq = Math.random() < 0.5;
+    let y = d - fl;
+    amb('zaguan', zIzq ? 0 : w - 2, y, 2, fl);
+    partir(zIzq ? 2 : 0, w - 2, w - 2 > 6 ? 2 : 1, 2.5).forEach(([x, a], i) => amb(i === 0 ? 'living' : 'estudio', x, y, a, fl));
+
+    let ultima = 'amb';
+    while (y > 0) {
+      if (y <= 6.5) { pat(elegir(['huerta', 'patio-trabajo', 'patio-naranjos']), 0, 0, w, y); break; }
+      let len = snap(rnd(3.5, 6)); if (y - len < 3.5) len = y - 3.5;
+      y -= len;
+      if (ultima === 'amb' ? Math.random() < 0.65 : Math.random() < 0.2) {
+        const tipo = elegir(['patio-principal', 'patio-naranjos', 'patio-agua', 'patio-luz']), modo = elegir(w < 7 ? ['total', 'lado'] : ['total', 'centro', 'lado']);
+        if (modo === 'total') pat(tipo, 0, y, w, len);
+        else if (modo === 'centro') { const s = snap(rnd(2.5, 3)); amb(siguiente(), 0, y, s, len); pat(tipo, s, y, w - 2 * s, len); amb(siguiente(), w - s, y, s, len); }
+        else { const s = snap(rnd(3.5, Math.min(5, w - 3))), izq = Math.random() < 0.5; amb(siguiente(), izq ? 0 : w - s, y, s, len); pat(tipo, izq ? s : 0, y, w - s, len); }
+        ultima = 'patio';
+      } else {
+        partir(0, w, elegir(w > 7 ? [2, 3] : [1, 2]), 2.5).forEach(([x, a]) => amb(a < 2.6 ? 'bano' : siguiente(), x, y, a, len));
+        ultima = 'amb';
+      }
+    }
+    state.rooms = rooms;
+    const p = elegir(rooms.filter(r => r.patio));
+    state.sx = clamp(snap(p.x + p.w / 2, 0.25), 0.25, w - 0.25);   // el corte pasa por un patio
+    return rooms.filter(r => r.y + r.h === d).sort((a, b) => a.x - b.x);
+  }
+
+  // La fachada responde a la planta: la puerta va frente al zaguán y las ventanas frente a los otros ambientes del frente.
+  function remixFachada(frente) {
+    const pick = cat => elegir(CAT.fachada.filter(e => e.cat === cat));
     const azar = p => Math.random() < p;
-    const { w } = state.lot, H = state.fachada.alto, top = G - H, f = [];
+    const { w } = state.lot, H = state.fachada.alto = snap(rnd(6, 9)), top = G - H, f = [];
     const add = (d, x, y, s = 1, flip = false) => f.push({ id: uid(), el: d.id, x, y, s, flip });
     const z = pick('zocalo'); add(z, 0, G - z.h);
     if (azar(0.6)) { const c = pick('columna'), s = (H - z.h - 0.6) / c.h; add(c, 0.15, G - z.h - c.h * s, s); add(c, w - 0.15 - c.w * s, G - z.h - c.h * s, s); }
     if (azar(0.5)) add(pick('moldura'), 0, top + H * 0.45);
     add(pick('moldura'), 0, top);
-    const slots = w > 7 ? [0.25, 0.5, 0.75] : [0.3, 0.7], di = Math.floor(Math.random() * slots.length);
-    const puerta = pick('puerta'), ds = Math.min(1, (H - 1.5) / puerta.h);
-    add(puerta, w * slots[di] - puerta.w * ds / 2, G - puerta.h * ds, ds);
-    const ven = pick('ventana'), vs = Math.min(1, (w / slots.length - 0.4) / ven.w);
-    slots.forEach((t, i) => { if (i !== di) add(ven, w * t - ven.w * vs / 2, Math.min(G - H * 0.45 - ven.h * vs / 2, G - 0.3 - ven.h * vs), vs); });
-    if (azar(0.5)) { const o = pick('ornamento'); add(o, w * slots[di] - o.w / 2, G - puerta.h * ds - o.h - 0.25); }
+    const puerta = pick('puerta'), ven = pick('ventana'), ds = Math.min(1, (H - 1.5) / puerta.h);
+    let px = w / 2;
+    for (const r of frente) {
+      const cx = r.x + r.w / 2;
+      if (r.tipo === 'zaguan') { px = cx; add(puerta, cx - puerta.w * ds / 2, G - puerta.h * ds, ds); }
+      else { const vs = Math.min(1, (r.w - 0.6) / ven.w); add(ven, cx - ven.w * vs / 2, Math.min(G - H * 0.45 - ven.h * vs / 2, G - 0.3 - ven.h * vs), vs); }
+    }
+    if (azar(0.5)) { const o = pick('ornamento'); add(o, px - o.w / 2, G - puerta.h * ds - o.h - 0.25); }
     const r = pick('remate'); add(r, w / 2 - r.w / 2, top - r.h + 0.05);
     state.facade = f;
-    state.fachada.pano = CAT.panos[Math.floor(Math.random() * CAT.panos.length)].id;
-    ui.sel = null;
-    setPaso('fachada'); commit(true);
-    toast(`Remix: ${[puerta, ven, r].map(d => EST(d.estilo).nombre).join(' + ')}`);
+    state.fachada.pano = elegir(CAT.panos).id;
+    return [puerta, ven, r];
+  }
+
+  function remix() {
+    const frente = remixPlanta(), piezas = remixFachada(frente);
+    const pats = state.rooms.filter(r => r.patio).length, ambs = state.rooms.length - pats;
+    ui.sel = null; ui.tool = null;
+    setPaso('lamina'); commit(true);
+    toast(`Remix: ${pats} patio${pats === 1 ? '' : 's'}, ${ambs} ambientes · ${piezas.map(d => EST(d.estilo).nombre).join(' + ')}`);
   }
 
   /* ---------- Archivos ---------- */
