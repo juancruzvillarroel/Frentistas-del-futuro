@@ -575,7 +575,8 @@ window.CATALOGO = (() => {
     { id: 'bano', nombre: 'Baño', w: 2, h: 2.5, color: '#cad8de', techo: 'losa', desc: 'Azulejo del piso al techo.' },
     { id: 'estudio', nombre: 'Estudio', w: 3, h: 4, color: '#e3d3b4', techo: 'losa', desc: 'Para leer el archivo.' },
     { id: 'taller', nombre: 'Taller', w: 3, h: 5, color: '#cdbd9c', techo: 'diente-sierra', desc: 'El trabajo dentro de la casa, como en la inmigración.' },
-    { id: 'galeria', nombre: 'Galería', w: 1.5, h: 8, color: '#f1e8d4', techo: 'chapa', desc: 'Semicubierto que acompaña al patio.' }
+    { id: 'galeria', nombre: 'Galería', w: 1.5, h: 8, color: '#f1e8d4', techo: 'chapa', desc: 'Semicubierto que acompaña al patio.' },
+    { id: 'pasillo', nombre: 'Pasillo', w: 1.2, h: 6, color: '#efe4cc', techo: 'losa', desc: 'Circulación cubierta que conecta los ambientes.' }
   ].map(a => ({ ...a, equipo: equipos[a.id] }));
   const patios = [
     { id: 'patio-principal', nombre: 'Patio principal', w: 5, h: 5, suelo: 'azulejo', funcion: 'Encuentro', desc: 'El centro de la casa andaluza y de la casa chorizo.' },

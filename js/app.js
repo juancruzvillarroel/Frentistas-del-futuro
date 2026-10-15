@@ -120,6 +120,7 @@
     s += txt(d + 1.4, w / 2, 'FONDO', 0.5, { font: 'mono', extra: `transform="rotate(90 ${d + 1.4} ${w / 2})"` });
     for (const r of state.rooms) s += planRoom(r, live);
     s += `<line x1="0" y1="0" x2="0" y2="${w}" stroke="${C.tinta}" stroke-width="4"/>`;
+    if (!(live && ui.paso === 'patios')) s += dibujarPuertas();
     const sx = state.sx;
     s += `<line x1="-1" y1="${sx}" x2="${d + 1}" y2="${sx}" stroke="${C.almagra}" stroke-width="1.4" stroke-dasharray="10 4 2 4" pointer-events="none"/>`;
     for (const X of [-1, d + 1]) s += `<g ${live ? 'data-handle="corte" style="cursor:ns-resize"' : ''}><circle cx="${X}" cy="${sx}" r="0.45" fill="${C.almagra}" stroke="${C.tinta}" stroke-width="1"/>${txt(X, sx + 0.2, 'A', 0.55, { font: 'mono', fill: C.cal, extra: 'pointer-events="none"' })}</g>`;
@@ -157,6 +158,81 @@
     s += txt(x, y, r.nombre, fs, { anchor: 'start', extra: `font-style="italic" ${halo}` });
     s += txt(x, y + fs * 0.95, `${fmt(r.w * r.h)} m²`, fs * 0.8, { anchor: 'start', font: 'mono', extra: halo });
     return s + '</g>';
+  }
+
+  /* ---------- Puertas y circulación (se calculan solas a partir de la planta) ---------- */
+  const esCirc = r => r.patio || ['zaguan', 'pasillo', 'galeria'].includes(r.tipo);
+  const abierto = r => r.patio || r.tipo === 'galeria';
+
+  // Lado compartido entre dos espacios (coordenadas del lote), si mide al menos 1 m.
+  // eje 'x': muro en x = c que corre en y de t0 a t1; eje 'y': muro en y = c que corre en x.
+  function ladoComun(a, b) {
+    const e = 1e-6;
+    for (const [p, q] of [[a, b], [b, a]]) {
+      if (Math.abs(p.x + p.w - q.x) < e) { const t0 = Math.max(a.y, b.y), t1 = Math.min(a.y + a.h, b.y + b.h); if (t1 - t0 >= 1) return { eje: 'x', c: q.x, t0, t1 }; }
+      if (Math.abs(p.y + p.h - q.y) < e) { const t0 = Math.max(a.x, b.x), t1 = Math.min(a.x + a.w, b.x + b.w); if (t1 - t0 >= 1) return { eje: 'y', c: q.y, t0, t1 }; }
+    }
+    return null;
+  }
+
+  // Cada ambiente se abre a un espacio de circulación vecino (patio, galería, pasillo, zaguán);
+  // si no tiene, a un ambiente vecino que ya tenga acceso desde la calle.
+  function calcularPuertas() {
+    const R = state.rooms, { d } = state.lot, puertas = [], con = new Map(R.map(r => [r.id, new Set()])), vec = new Map(R.map(r => [r.id, []]));
+    const unir = (a, b, lado, tipo) => { puertas.push({ a, b, lado, tipo }); con.get(a.id).add(b.id); con.get(b.id).add(a.id); };
+    for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) {
+      const l = ladoComun(R[i], R[j]); if (!l) continue;
+      vec.get(R[i].id).push([R[j], l]); vec.get(R[j].id).push([R[i], l]);
+      if (esCirc(R[i]) && esCirc(R[j])) unir(R[i], R[j], l, abierto(R[i]) && abierto(R[j]) ? 'abierto' : 'paso');
+    }
+    const prioridad = r => r.tipo === 'zaguan' ? 1 : 2;
+    for (const r of R) if (!esCirc(r)) {
+      const op = vec.get(r.id).filter(([o]) => esCirc(o)).sort((p, q) => prioridad(q[0]) - prioridad(p[0]) || (q[1].t1 - q[1].t0) - (p[1].t1 - p[1].t0))[0];
+      if (op) unir(r, op[0], op[1], 'puerta');
+    }
+    const frente = R.filter(r => Math.abs(r.y + r.h - d) < 1e-6);
+    const entrada = frente.find(r => r.tipo === 'zaguan') || frente.find(esCirc) || frente[0];
+    const alcanzados = new Set();
+    const recorrer = () => { alcanzados.clear(); const cola = entrada ? [entrada.id] : []; while (cola.length) { const id = cola.shift(); if (alcanzados.has(id)) continue; alcanzados.add(id); cola.push(...con.get(id)); } };
+    recorrer();
+    for (let cambio = true; cambio;) {
+      cambio = false;
+      for (const r of R) if (!alcanzados.has(r.id)) {
+        const op = vec.get(r.id).find(([o]) => alcanzados.has(o.id));
+        if (op) { unir(r, op[0], op[1], esCirc(r) && esCirc(op[0]) ? 'paso' : 'puerta'); recorrer(); cambio = true; }
+      }
+    }
+    return { puertas, entrada, sinAcceso: R.filter(r => !alcanzados.has(r.id)) };
+  }
+
+  // Dibuja un vano en un muro (coordenadas del lote) pasándolo a pantalla. La hoja abre hacia «hacia».
+  function vano(eje, c, t, a, tipo, hacia) {
+    const d = state.lot.d, T = 0.34, GAP = '#f6efdf', st = `stroke="${C.tinta}" fill="none"`;
+    if (eje === 'x') {   // en pantalla: muro horizontal en Y = c, centrado en X = d − t
+      const Y = c, X = d - t, s = hacia.x + hacia.w / 2 > c ? 1 : -1, hx = X - a / 2;
+      let o = `<rect x="${hx}" y="${Y - T / 2}" width="${a}" height="${T}" fill="${GAP}"/>` + `<path d="M${hx} ${Y - T / 2} V${Y + T / 2} M${hx + a} ${Y - T / 2} V${Y + T / 2}" ${st} stroke-width="1.4"/>`;
+      if (tipo === 'abierto') o += `<line x1="${hx}" y1="${Y}" x2="${hx + a}" y2="${Y}" ${st} stroke-width="0.8" stroke-dasharray="4 3"/>`;
+      if (tipo === 'puerta') o += `<path d="M${hx} ${Y} V${Y + s * a}" ${st} stroke-width="1.4"/><path d="M${hx} ${Y + s * a} A${a} ${a} 0 0 ${s > 0 ? 0 : 1} ${hx + a} ${Y}" ${st} stroke-width="0.7" stroke-dasharray="3 2"/>`;
+      return o;
+    }
+    // eje 'y': en pantalla, muro vertical en X = d − c, centrado en Y = t
+    const X = d - c, s = hacia.y + hacia.h / 2 < c ? 1 : -1, hy = t - a / 2;
+    let o = `<rect x="${X - T / 2}" y="${hy}" width="${T}" height="${a}" fill="${GAP}"/>` + `<path d="M${X - T / 2} ${hy} H${X + T / 2} M${X - T / 2} ${hy + a} H${X + T / 2}" ${st} stroke-width="1.4"/>`;
+    if (tipo === 'abierto') o += `<line x1="${X}" y1="${hy}" x2="${X}" y2="${hy + a}" ${st} stroke-width="0.8" stroke-dasharray="4 3"/>`;
+    if (tipo === 'puerta') o += `<path d="M${X} ${hy} H${X + s * a}" ${st} stroke-width="1.4"/><path d="M${X + s * a} ${hy} A${a} ${a} 0 0 ${s > 0 ? 1 : 0} ${X} ${hy + a}" ${st} stroke-width="0.7" stroke-dasharray="3 2"/>`;
+    return o;
+  }
+
+  function dibujarPuertas() {
+    const { puertas, entrada } = calcularPuertas(); let s = '';
+    for (const p of puertas) {
+      const l = p.lado, L = l.t1 - l.t0, bano = p.a.tipo === 'bano' || p.b.tipo === 'bano';
+      const a = p.tipo === 'abierto' ? Math.max(0.8, L - 0.5) : Math.min(p.tipo === 'paso' ? 1.2 : bano ? 0.75 : 0.9, L - 0.3);
+      const t = p.tipo === 'abierto' ? (l.t0 + l.t1) / 2 : l.t0 + Math.min(L / 2, 0.3 + a / 2);
+      s += vano(l.eje, l.c, t, a, p.tipo, !esCirc(p.a) ? p.a : p.b);
+    }
+    if (entrada) s += vano('y', state.lot.d, entrada.x + entrada.w / 2, Math.min(1.2, entrada.w - 0.3), 'puerta', entrada);
+    return `<g pointer-events="none">${s}</g>`;
   }
 
   function planSel() {
@@ -401,7 +477,8 @@
     const estilos = new Set(usadas().map(d => d.estilo)).size;
     $('#status').innerHTML = `<span>Lote ${fmt(state.lot.w)}×${fmt(state.lot.d)} m</span><span>Cubierto ${fmt(cub)} m²</span>`
       + `<span>Patios ${pats.length} · ${fmt(pa)} m² (${Math.round(pa / lote * 100)}%)</span><span>Estilos mezclados: ${estilos}</span><span>Piezas nuevas: 0</span>`
-      + (pats.length ? '' : '<span class="warn">⚠ Toda casa necesita al menos un patio</span>');
+      + (pats.length ? '' : '<span class="warn">⚠ Toda casa necesita al menos un patio</span>')
+      + (() => { const sin = rooms.length ? calcularPuertas().sinAcceso : []; return sin.length ? `<span class="warn">⚠ Sin acceso: ${sin.map(r => esc(r.nombre)).join(', ')} (sumá un pasillo o movelos)</span>` : ''; })();
   }
 
   function commit(full) {
@@ -651,29 +728,43 @@
     };
     const partir = (x0, ancho, n, min) => { n = Math.max(1, Math.min(n, Math.floor(ancho / min))); const a = snap(ancho / n); return Array.from({ length: n }, (_, i) => [x0 + i * a, i < n - 1 ? a : ancho - (n - 1) * a]); };
     const pool = mezclar(['comedor', 'cocina', 'dormitorio', 'dormitorio', 'bano', 'estudio', 'taller', 'dormitorio']);
-    const siguiente = () => pool.length ? pool.shift() : elegir(['dormitorio', 'estudio', 'comedor']);
+    const hayBano = () => rooms.some(r => r.tipo === 'bano');
+    const siguiente = () => {   // un solo baño por casa
+      let t = pool.length ? pool.shift() : elegir(['dormitorio', 'estudio', 'comedor']);
+      if (t === 'bano' && hayBano()) t = elegir(['dormitorio', 'estudio']);
+      return t;
+    };
 
-    // Frente sobre calle Feria
+    // Frente sobre calle Feria: el zaguán queda del lado de la circulación
     const fl = snap(rnd(4.5, 5.5)), zIzq = Math.random() < 0.5;
     let y = d - fl;
     amb('zaguan', zIzq ? 0 : w - 2, y, 2, fl);
     partir(zIzq ? 2 : 0, w - 2, w - 2 > 6 ? 2 : 1, 2.5).forEach(([x, a], i) => amb(i === 0 ? 'living' : 'estudio', x, y, a, fl));
 
+    // Una galería o un pasillo recorre la casa de adelante hacia el fondo, del lado del zaguán:
+    // así todos los ambientes y patios del medio quedan conectados.
+    const sw = elegir([1.2, 1.5]), x0 = zIzq ? sw : 0, W2 = w - sw;
     let ultima = 'amb';
     while (y > 0) {
       if (y <= 6.5) { pat(elegir(['huerta', 'patio-trabajo', 'patio-naranjos']), 0, 0, w, y); break; }
       let len = snap(rnd(3.5, 6)); if (y - len < 3.5) len = y - 3.5;
       y -= len;
       if (ultima === 'amb' ? Math.random() < 0.65 : Math.random() < 0.2) {
-        const tipo = elegir(['patio-principal', 'patio-naranjos', 'patio-agua', 'patio-luz']), modo = elegir(w < 7 ? ['total', 'lado'] : ['total', 'centro', 'lado']);
-        if (modo === 'total') pat(tipo, 0, y, w, len);
-        else if (modo === 'centro') { const s = snap(rnd(2.5, 3)); amb(siguiente(), 0, y, s, len); pat(tipo, s, y, w - 2 * s, len); amb(siguiente(), w - s, y, s, len); }
-        else { const s = snap(rnd(3.5, Math.min(5, w - 3))), izq = Math.random() < 0.5; amb(siguiente(), izq ? 0 : w - s, y, s, len); pat(tipo, izq ? s : 0, y, w - s, len); }
+        const tipo = elegir(['patio-principal', 'patio-naranjos', 'patio-agua', 'patio-luz']), modo = elegir(W2 >= 7 ? ['total', 'centro', 'lado'] : W2 >= 6.5 ? ['total', 'lado'] : ['total']);
+        if (modo === 'total') pat(tipo, x0, y, W2, len);
+        else if (modo === 'centro') { const s = snap(rnd(2.5, 3)); amb(siguiente(), x0, y, s, len); pat(tipo, x0 + s, y, W2 - 2 * s, len); amb(siguiente(), x0 + W2 - s, y, s, len); }
+        else { const s = snap(rnd(3.5, Math.min(5, W2 - 3))), izq = Math.random() < 0.5; amb(siguiente(), izq ? x0 : x0 + W2 - s, y, s, len); pat(tipo, izq ? x0 + s : x0, y, W2 - s, len); }
         ultima = 'patio';
       } else {
-        partir(0, w, elegir(w > 7 ? [2, 3] : [1, 2]), 2.5).forEach(([x, a]) => amb(a < 2.6 ? 'bano' : siguiente(), x, y, a, len));
+        partir(x0, W2, elegir(W2 > 7 ? [2, 3] : [1, 2]), 2.5).forEach(([x, a]) => amb(a < 2.6 && !hayBano() ? 'bano' : siguiente(), x, y, a, len));
         ultima = 'amb';
       }
+    }
+    const fondo = Math.min(...rooms.filter(r => r.y === 0).map(r => r.h)), largo = d - fl - fondo;
+    if (largo >= 1) amb(sw >= 1.5 ? 'galeria' : 'pasillo', zIzq ? 0 : w - sw, fondo, sw, largo);
+    if (!hayBano()) {   // si no salió ningún baño, el ambiente más chico del medio pasa a serlo
+      const r = rooms.filter(r => !r.patio && !['zaguan', 'living', 'galeria', 'pasillo'].includes(r.tipo)).sort((a, b) => a.w * a.h - b.w * b.h)[0];
+      if (r) { r.tipo = 'bano'; r.nombre = A('bano').nombre; r.techo = elegir(CAT.techos).id; }
     }
     state.rooms = rooms;
     const p = elegir(rooms.filter(r => r.patio));
