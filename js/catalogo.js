@@ -564,6 +564,8 @@ window.CATALOGO = (() => {
     taller: { box: [2.8, 2.6], draw: () => M(0, 0, 2.5, 0.8, 0, '#d9c7a6') + R(0.2, 0.15, 0.4, 0.3, 'none', 0.6) + L(0.9, 0.4, 1.6, 0.4, 1.2) + L(1.8, 0.2, 2.2, 0.6, 1.2)
       + M(0, 1.4, 0.5, 1.2, 0) + rep(3, i => L(0, 1.7 + i * 0.3, 0.5, 1.7 + i * 0.3, 0.6)) + M(1.4, 1.5, 0.9, 0.9) + O(1.85, 1.95, 0.3, 'none', 0.8) + O(1.2, 1.05, 0.18, '#e8dcc2', 0.8) },
     zaguan: { box: [2.4, 1.4], draw: () => R(0.1, 0.35, 0.5, 0.7, '#c98466', 0.8) + rep(4, i => L(0.1, 0.49 + i * 0.14, 0.6, 0.49 + i * 0.14, 0.4)) + M(1, 0.05, 1.2, 0.38, 0.04) + O(2.15, 1.1, 0.18, C.verde, 0.8) },
+    escalera: { box: [3, 1.2], draw: () => R(0, 0, 3, 1.2, C.cal, 0.9) + rep(10, i => L(0.27 * (i + 1), 0, 0.27 * (i + 1), 1.2, 0.7)) + L(0.15, 0.6, 2.75, 0.6, 1) + P('M2.5 0.42 L2.8 0.6 L2.5 0.78', 'none', 1) + O(0.15, 0.6, 0.06, C.tinta, 0.6) },
+    terraza: { box: [2.6, 1.8], draw: () => M(0.1, 0.1, 0.65, 1.5, 0.15, '#e8dcc2') + M(0.9, 0.1, 0.65, 1.5, 0.15, '#e8dcc2') + O(2.05, 0.6, 0.35, C.cal, 0.9) + O(2.35, 1.45, 0.25, C.verde, 0.8) + O(1.85, 1.5, 0.18, C.verde, 0.8) },
     galeria: { box: [3, 1.2], repetir: true, draw: () => M(0.3, 0.1, 1.4, 0.38, 0.04) + O(2.2, 0.35, 0.2, C.verde, 0.8) + O(2.6, 0.8, 0.17, C.verde, 0.8) }
   };
   const ambientes = [
@@ -576,7 +578,9 @@ window.CATALOGO = (() => {
     { id: 'estudio', nombre: 'Estudio', w: 3, h: 4, color: '#e3d3b4', techo: 'losa', desc: 'Para leer el archivo.' },
     { id: 'taller', nombre: 'Taller', w: 3, h: 5, color: '#cdbd9c', techo: 'diente-sierra', desc: 'El trabajo dentro de la casa, como en la inmigración.' },
     { id: 'galeria', nombre: 'Galería', w: 1.5, h: 8, color: '#f1e8d4', techo: 'chapa', desc: 'Semicubierto que acompaña al patio.' },
-    { id: 'pasillo', nombre: 'Pasillo', w: 1.2, h: 6, color: '#efe4cc', techo: 'losa', desc: 'Circulación cubierta que conecta los ambientes.' }
+    { id: 'pasillo', nombre: 'Pasillo', w: 1.2, h: 6, color: '#efe4cc', techo: 'losa', desc: 'Circulación cubierta que conecta los ambientes.' },
+    { id: 'escalera', nombre: 'Escalera', w: 1.5, h: 3.5, color: '#e2d6bd', techo: 'losa', desc: 'Sube al nivel de arriba: ahí aparece su llegada.' },
+    { id: 'terraza', nombre: 'Terraza', w: 4, h: 4, color: '#efe9da', techo: 'azotea', desc: 'Espacio descubierto en los pisos altos, mirando al patio.' }
   ].map(a => ({ ...a, equipo: equipos[a.id] }));
   const patios = [
     { id: 'patio-principal', nombre: 'Patio principal', w: 5, h: 5, suelo: 'azulejo', funcion: 'Encuentro', desc: 'El centro de la casa andaluza y de la casa chorizo.' },

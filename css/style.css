@@ -90,6 +90,11 @@ main { padding: 26px var(--gutter) 70px; display: flex; flex-direction: column; 
 
 .exportar { display: flex; gap: 18px; flex-wrap: wrap; }
 .siguiente { display: flex; justify-content: flex-end; margin-top: 8px; }
+.niveles { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.niveles .niv-tit { font-family: var(--sc); font-size: 22px; margin-right: 6px; }
+.niveles .btn.on { background: var(--tinta); color: var(--cal); }
+.niveles .btn.mas { background: var(--albero); }
+.niveles .btn.menos { color: var(--almagra); }
 
 /* Mesa de trabajo */
 .trabajo { scroll-margin-top: 64px; display: flex; flex-direction: column; gap: 14px; }

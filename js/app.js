@@ -66,14 +66,24 @@
 
   // Se arranca con el lote vacío; la casa chorizo de Caballito queda como ejemplo en el botón «Casa chorizo».
   const casaVacia = () => ({ ...casaInicial(), nombre: 'Casa sin nombre', rooms: [], facade: [] });
-  let state = load() || casaVacia();
-  const ui = { paso: 'patios', camino: { patios: [], ambientes: [], fachada: [], techos: [] }, tool: null, sel: null, drag: null };
+  let state = normalizar(load() || casaVacia());
+  function normalizar(s) { s.niveles = s.niveles || 1; s.rooms.forEach(r => { r.nivel = r.nivel || 0; }); return s; }
+  const ui = { paso: 'patios', nivel: 0, camino: { patios: [], ambientes: [], fachada: [], techos: [] }, tool: null, sel: null, drag: null };
   const ARBOLES = Archivo.arboles(CAT);
   const vista = () => PASOS[ui.paso].vista;
 
+  /* ---------- Niveles: la planta baja es el nivel 0. Los patios solo van en planta baja y en los pisos de arriba
+     quedan como vacíos; una escalera ocupa su lugar en su nivel y «llega» al nivel de arriba. ---------- */
+  const niv = r => r.nivel || 0;
+  const nombreNivel = n => n === 0 ? 'Planta baja' : `Piso ${n}`;
+  const altoNivel = n => Math.max(3, ...state.rooms.filter(r => niv(r) === n && !r.patio).map(r => r.alto)) + 0.3;
+  const baseNivel = n => { let b = 0; for (let k = 0; k < n; k++) b += altoNivel(k); return b; };
+  const bloqueos = n => n > 0 ? state.rooms.filter(o => (niv(o) === 0 && o.patio) || (niv(o) === n - 1 && o.tipo === 'escalera')) : [];
+
   const room = id => state.rooms.find(r => r.id === id);
   const facEl = id => state.facade.find(f => f.id === id);
-  const overlaps = r => state.rooms.some(o => o.id !== r.id && r.x < o.x + o.w - 1e-6 && o.x < r.x + r.w - 1e-6 && r.y < o.y + o.h - 1e-6 && o.y < r.y + r.h - 1e-6);
+  const choca = (a, o) => a.x < o.x + o.w - 1e-6 && o.x < a.x + a.w - 1e-6 && a.y < o.y + o.h - 1e-6 && o.y < a.y + a.h - 1e-6;
+  const overlaps = r => state.rooms.filter(o => niv(o) === niv(r)).concat(bloqueos(niv(r))).some(o => o.id !== r.id && choca(r, o));
   const inside = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
   const clampItems = r => r.patio && r.objetos.forEach(o => { o.x = clamp(o.x, 0, r.w); o.y = clamp(o.y, 0, r.h); });
 
@@ -86,6 +96,7 @@
     <pattern id="suelo-cal" patternUnits="userSpaceOnUse" width="0.5" height="0.5"><rect width="0.5" height="0.5" fill="${C.cal}"/><path d="M0 0 H0.5 M0 0 V0.5" stroke="#cdbf9f" stroke-width="0.6" fill="none"/></pattern>
     <pattern id="semi" patternUnits="userSpaceOnUse" width="0.4" height="0.4"><rect width="0.4" height="0.4" fill="#f1e8d4"/><path d="M0 0.4 L0.4 0" stroke="#bfae8a" stroke-width="0.6"/></pattern>
     <pattern id="tierra" patternUnits="userSpaceOnUse" width="0.5" height="0.5"><rect width="0.5" height="0.5" fill="#e2d4b4"/><path d="M0 0.5 L0.5 0" stroke="#b9a882" stroke-width="0.6"/></pattern>
+    <pattern id="vacio" patternUnits="userSpaceOnUse" width="0.6" height="0.6"><rect width="0.6" height="0.6" fill="#e9eef2"/><path d="M0 0.6 L0.6 0 M0 0 L0.6 0.6" stroke="#9db4cf" stroke-width="0.6"/></pattern>
   </defs>`;
   const STYLE = '<style>*{vector-effect:non-scaling-stroke}</style>';
 
@@ -109,7 +120,7 @@
   const scr = (x, y) => [state.lot.d - y, x];
   const scrRect = r => ({ X: state.lot.d - (r.y + r.h), Y: r.x, W: r.h, H: r.w });
 
-  function drawPlan(live) {
+  function drawPlan(live, n = ui.nivel) {
     const { w, d } = state.lot; let s = '';
     if (live) {
       for (let x = 0; x <= d; x++) s += `<line x1="${x}" y1="0" x2="${x}" y2="${w}" stroke="#ddd0b4" stroke-width="0.5"/>`;
@@ -118,9 +129,16 @@
     s += `<rect x="0" y="0" width="${d}" height="${w}" fill="none" stroke="${C.tinta}" stroke-width="1" stroke-dasharray="6 4"/>`;
     s += `<line x1="-0.7" y1="-1.5" x2="-0.7" y2="${w + 1.5}" stroke="${C.tinta}" stroke-width="0.8"/>` + txt(-1.6, w / 2, 'CALLE FERIA', 0.6, { font: 'mono', extra: `letter-spacing="0.2" transform="rotate(-90 -1.6 ${w / 2})"` });
     s += txt(d + 1.4, w / 2, 'FONDO', 0.5, { font: 'mono', extra: `transform="rotate(90 ${d + 1.4} ${w / 2})"` });
-    for (const r of state.rooms) s += planRoom(r, live);
-    s += `<line x1="0" y1="0" x2="0" y2="${w}" stroke="${C.tinta}" stroke-width="4"/>`;
-    if (!(live && ui.paso === 'patios')) s += dibujarPuertas();
+    const E = espacios(n);
+    if (n > 0) {   // referencia: el nivel de abajo en línea tenue, y los patios de planta baja como vacíos
+      for (const r of state.rooms.filter(r => niv(r) === n - 1 && !r.patio)) { const q = scrRect(r); s += `<rect x="${q.X}" y="${q.Y}" width="${q.W}" height="${q.H}" fill="none" stroke="${C.tinta}" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.4"/>`; }
+      for (const r of E.vacios) { const q = scrRect(r); s += `<rect x="${q.X}" y="${q.Y}" width="${q.W}" height="${q.H}" fill="url(#vacio)" stroke="${C.tinta}" stroke-width="1"/>` + txt(q.X + q.W / 2, q.Y + q.H / 2, `Vacío · ${r.nombre}`, 0.42, { extra: `font-style="italic" ${halo}` }); }
+    }
+    s += dibujarPasillos(E);
+    for (const r of E.llegadas) s += planRoom(r, false);
+    for (const r of E.base) s += planRoom(r, live);
+    if (n === 0) s += `<line x1="0" y1="0" x2="0" y2="${w}" stroke="${C.tinta}" stroke-width="4"/>`;
+    if (!(live && ui.paso === 'patios')) s += dibujarPuertas(E, n);
     const sx = state.sx;
     s += `<line x1="-1" y1="${sx}" x2="${d + 1}" y2="${sx}" stroke="${C.almagra}" stroke-width="1.4" stroke-dasharray="10 4 2 4" pointer-events="none"/>`;
     for (const X of [-1, d + 1]) s += `<g ${live ? 'data-handle="corte" style="cursor:ns-resize"' : ''}><circle cx="${X}" cy="${sx}" r="0.45" fill="${C.almagra}" stroke="${C.tinta}" stroke-width="1"/>${txt(X, sx + 0.2, 'A', 0.55, { font: 'mono', fill: C.cal, extra: 'pointer-events="none"' })}</g>`;
@@ -148,7 +166,7 @@
     const fill = r.patio ? `url(#suelo-${r.suelo})` : (r.tipo === 'galeria' ? 'url(#semi)' : A(r.tipo).color);
     const q = scrRect(r);
     // En el paso Patios solo se tocan los patios (los ambientes se ven tenues); en Ambientes los patios quedan fijos.
-    const activo = live && (ui.paso === 'patios' ? r.patio : ui.paso === 'ambientes' && !r.patio);
+    const activo = live && !r.auto && niv(r) === ui.nivel && (ui.paso === 'patios' ? r.patio : ui.paso === 'ambientes' && !r.patio);
     const tenue = live && ui.paso === 'patios' && !r.patio;
     let s = `<g ${activo ? `data-room="${r.id}" style="cursor:move"` : ''} ${tenue ? 'opacity="0.35"' : ''}>`;
     s += `<rect x="${q.X}" y="${q.Y}" width="${q.W}" height="${q.H}" fill="${fill}" stroke="${C.tinta}" stroke-width="${r.patio ? 1.2 : 2.2}"/>`;
@@ -160,9 +178,110 @@
     return s + '</g>';
   }
 
-  /* ---------- Puertas y circulación (se calculan solas a partir de la planta) ---------- */
-  const esCirc = r => r.patio || ['zaguan', 'pasillo', 'galeria'].includes(r.tipo);
-  const abierto = r => r.patio || r.tipo === 'galeria';
+  /* ---------- Puertas y circulación (se calculan solas a partir de la planta) ----------
+     1. Si un ambiente no da a ningún espacio de circulación (patio, galería, pasillo, zaguán, escalera),
+        se traza un PASILLO automático por el espacio libre del lote hasta la circulación más cercana.
+     2. Después se abren las puertas: cada ambiente hacia su circulación; si no hay lugar para un pasillo,
+        hacia un ambiente vecino que ya tenga acceso (como en la casa chorizo). */
+  const esCirc = r => r.patio || ['zaguan', 'pasillo', 'galeria', 'escalera', 'terraza'].includes(r.tipo);
+  const abierto = r => r.patio || r.tipo === 'galeria' || r.tipo === 'terraza';
+  const tocan = (a, b) => {   // comparten un borde, aunque sea corto
+    const e = 1e-6, sy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y), sxx = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    return ((Math.abs(a.x + a.w - b.x) < e || Math.abs(b.x + b.w - a.x) < e) && sy > e) || ((Math.abs(a.y + a.h - b.y) < e || Math.abs(b.y + b.h - a.y) < e) && sxx > e);
+  };
+
+  // Espacios de circulación a los que se llega desde la entrada (la calle en planta baja; la escalera en los pisos).
+  function alcanzables(R, n) {
+    const ok = new Set(), cola = R.filter(r => esCirc(r) && (n === 0 ? Math.abs(r.y + r.h - state.lot.d) < 1e-6 : String(r.id).startsWith('lleg-')));
+    while (cola.length) {
+      const r = cola.shift(); if (ok.has(r.id)) continue; ok.add(r.id);
+      for (const o of R) if (!ok.has(o.id) && esCirc(o) && (ladoComun(r, o) || (r.grupo !== undefined && r.grupo === o.grupo) || (r.auto && o.auto && tocan(r, o)))) cola.push(o);
+    }
+    return ok;
+  }
+
+  // Une celdas marcadas en rectángulos (fila por fila).
+  function rectangulos(g, S) {
+    const ny = g.length, nx = g[0].length, vis = g.map(f => new Uint8Array(nx)), out = [];
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      if (!g[j][i] || vis[j][i]) continue;
+      let a = 1; while (i + a < nx && g[j][i + a] && !vis[j][i + a]) a++;
+      let b = 1; while (j + b < ny && Array.from({ length: a }, (_, k) => g[j + b][i + k] && !vis[j + b][i + k]).every(Boolean)) b++;
+      for (let y = j; y < j + b; y++) for (let x = i; x < i + a; x++) vis[y][x] = 1;
+      out.push({ x: i * S, y: j * S, w: a * S, h: b * S, i, j });
+    }
+    return out;
+  }
+
+  function autoPasillos(B, vacios, n) {
+    const { w, d } = state.lot, S = 0.5, nx = Math.round(w / S), ny = Math.round(d / S);
+    const cor = Array.from({ length: ny }, () => new Uint8Array(nx));
+    const vacio = { piezas: [], celdas: cor, S };
+    if (!B.length) return vacio;
+    const occ = Array.from({ length: ny }, () => new Uint8Array(nx));
+    for (const r of B.concat(vacios)) for (let j = Math.round(r.y / S); j < Math.round((r.y + r.h) / S); j++) for (let i = Math.round(r.x / S); i < Math.round((r.x + r.w) / S); i++) if (occ[j]) occ[j][i] = 1;
+    const libre = (i, j) => i >= 0 && j >= 0 && i + 1 < nx && j + 1 < ny && !occ[j][i] && !occ[j][i + 1] && !occ[j + 1][i] && !occ[j + 1][i + 1];
+    const bloque = (i, j) => ({ x: i * S, y: j * S, w: 1, h: 1 });
+    const piezas = () => {
+      // grupos: componentes conectados de celdas de pasillo
+      const grupo = cor.map(f => new Int16Array(nx).fill(-1)); let g = 0;
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) if (cor[j][i] && grupo[j][i] < 0) {
+        const pila = [[i, j]]; grupo[j][i] = g;
+        while (pila.length) { const [a, b] = pila.pop(); for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = a + da, y = b + db; if (x >= 0 && y >= 0 && x < nx && y < ny && cor[y][x] && grupo[y][x] < 0) { grupo[y][x] = g; pila.push([x, y]); } } }
+        g++;
+      }
+      return rectangulos(cor, S).map((p, k) => ({ id: `pas-${n}-${k}`, tipo: 'pasillo', patio: false, auto: true, nombre: 'Pasillo', nivel: n, alto: 2.8, techo: 'losa', x: p.x, y: p.y, w: p.w, h: p.h, grupo: grupo[p.j][p.i] }));
+    };
+    const sinSalida = new Set();
+    for (let it = 0; it < 16; it++) {
+      const todos = B.concat(piezas()), T = alcanzables(todos, n), metas = todos.filter(r => T.has(r.id));
+      const X = todos.find(r => !r.auto && !sinSalida.has(r.id) && (esCirc(r) ? !T.has(r.id) : !todos.some(o => T.has(o.id) && ladoComun(r, o))));
+      if (!X) break;
+      const meta = (i, j) => metas.some(r => ladoComun(bloque(i, j), r)) || (n === 0 && !metas.length && Math.abs((j + 2) * S - d) < 1e-6);
+      const cola = [], prev = new Map();
+      for (let j = 0; j + 1 < ny; j++) for (let i = 0; i + 1 < nx; i++) if (libre(i, j) && ladoComun(bloque(i, j), X)) { cola.push([i, j]); prev.set(j * nx + i, -1); }
+      let fin = null;
+      for (let q = 0; q < cola.length; q++) {
+        const [i, j] = cola[q]; if (meta(i, j)) { fin = j * nx + i; break; }
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj, k = b * nx + a; if (!prev.has(k) && libre(a, b)) { prev.set(k, j * nx + i); cola.push([a, b]); } }
+      }
+      if (fin === null) { sinSalida.add(X.id); continue; }
+      for (let k = fin; k !== -1; k = prev.get(k)) { const i = k % nx, j = Math.floor(k / nx); cor[j][i] = cor[j][i + 1] = cor[j + 1][i] = cor[j + 1][i + 1] = 1; }
+    }
+    return { piezas: piezas(), celdas: cor, S };
+  }
+
+  // Todo lo de un nivel: ambientes guardados, llegadas de escalera, vacíos de patio, pasillos automáticos y puertas.
+  const memoEsp = new Map();
+  function espacios(n) {
+    const key = n + '|' + state.lot.w + '|' + state.lot.d + '|' + JSON.stringify(state.rooms.map(r => [r.id, r.tipo, r.patio, niv(r), r.x, r.y, r.w, r.h, r.nombre]));
+    if (memoEsp.has(key)) return memoEsp.get(key);
+    const base = state.rooms.filter(r => niv(r) === n);
+    const llegadas = n > 0 ? state.rooms.filter(r => niv(r) === n - 1 && r.tipo === 'escalera').map(r => ({ ...r, id: 'lleg-' + r.id, nivel: n, auto: true, nombre: 'Llegada de escalera' })) : [];
+    const vacios = n > 0 ? state.rooms.filter(r => niv(r) === 0 && r.patio) : [];
+    const B = base.concat(llegadas), pas = autoPasillos(B, vacios, n), todos = B.concat(pas.piezas);
+    const E = { base, llegadas, vacios, pasillos: pas, todos, ...calcularPuertas(todos, n) };
+    if (memoEsp.size > 40) memoEsp.clear();
+    memoEsp.set(key, E);
+    return E;
+  }
+
+  // Pasillos automáticos: piso de color y muros solo en el borde exterior.
+  function dibujarPasillos(E) {
+    const { piezas, celdas: g, S } = E.pasillos; if (!piezas.length) return '';
+    const d = state.lot.d, ny = g.length, nx = g[0].length; let s = '', m = '';
+    for (const p of piezas) { const q = scrRect(p); s += `<rect x="${q.X}" y="${q.Y}" width="${q.W}" height="${q.H}" fill="${A('pasillo').color}"/>`; }
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      if (!g[j][i]) continue;
+      const x0 = i * S, x1 = x0 + S, y0 = j * S, y1 = y0 + S;   // en pantalla: X = d − y, Y = x
+      if (i === 0 || !g[j][i - 1]) m += `M${d - y1} ${x0} H${d - y0} `;
+      if (i === nx - 1 || !g[j][i + 1]) m += `M${d - y1} ${x1} H${d - y0} `;
+      if (j === 0 || !g[j - 1][i]) m += `M${d - y0} ${x0} V${x1} `;
+      if (j === ny - 1 || !g[j + 1][i]) m += `M${d - y1} ${x0} V${x1} `;
+    }
+    const mayor = piezas.reduce((a, b) => a.w * a.h >= b.w * b.h ? a : b), q = scrRect(mayor);
+    return `<g pointer-events="none">${s}<path d="${m}" stroke="${C.tinta}" stroke-width="2.2" fill="none"/>${txt(q.X + q.W / 2, q.Y + q.H / 2 + 0.15, 'pasillo', 0.38, { extra: `font-style="italic" ${halo}` })}</g>`;
+  }
 
   // Lado compartido entre dos espacios (coordenadas del lote), si mide al menos 1 m.
   // eje 'x': muro en x = c que corre en y de t0 a t1; eje 'y': muro en y = c que corre en x.
@@ -177,10 +296,11 @@
 
   // Cada ambiente se abre a un espacio de circulación vecino (patio, galería, pasillo, zaguán);
   // si no tiene, a un ambiente vecino que ya tenga acceso desde la calle.
-  function calcularPuertas() {
-    const R = state.rooms, { d } = state.lot, puertas = [], con = new Map(R.map(r => [r.id, new Set()])), vec = new Map(R.map(r => [r.id, []]));
-    const unir = (a, b, lado, tipo) => { puertas.push({ a, b, lado, tipo }); con.get(a.id).add(b.id); con.get(b.id).add(a.id); };
+  function calcularPuertas(R, n) {
+    const { d } = state.lot, puertas = [], con = new Map(R.map(r => [r.id, new Set()])), vec = new Map(R.map(r => [r.id, []]));
+    const unir = (a, b, lado, tipo) => { if (tipo) puertas.push({ a, b, lado, tipo }); con.get(a.id).add(b.id); con.get(b.id).add(a.id); };
     for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) {
+      if (R[i].grupo !== undefined && R[i].grupo === R[j].grupo) { unir(R[i], R[j], null, null); continue; }   // tramos del mismo pasillo
       const l = ladoComun(R[i], R[j]); if (!l) continue;
       vec.get(R[i].id).push([R[j], l]); vec.get(R[j].id).push([R[i], l]);
       if (esCirc(R[i]) && esCirc(R[j])) unir(R[i], R[j], l, abierto(R[i]) && abierto(R[j]) ? 'abierto' : 'paso');
@@ -190,10 +310,11 @@
       const op = vec.get(r.id).filter(([o]) => esCirc(o)).sort((p, q) => prioridad(q[0]) - prioridad(p[0]) || (q[1].t1 - q[1].t0) - (p[1].t1 - p[1].t0))[0];
       if (op) unir(r, op[0], op[1], 'puerta');
     }
-    const frente = R.filter(r => Math.abs(r.y + r.h - d) < 1e-6);
-    const entrada = frente.find(r => r.tipo === 'zaguan') || frente.find(esCirc) || frente[0];
+    const frente = n === 0 ? R.filter(r => Math.abs(r.y + r.h - d) < 1e-6) : [];
+    const entrada = n === 0 ? frente.find(r => r.tipo === 'zaguan') || frente.find(r => r.auto) || frente.find(esCirc) || frente[0] : null;
+    const inicio = n === 0 ? (entrada ? [entrada.id] : []) : R.filter(r => String(r.id).startsWith('lleg-')).map(r => r.id);
     const alcanzados = new Set();
-    const recorrer = () => { alcanzados.clear(); const cola = entrada ? [entrada.id] : []; while (cola.length) { const id = cola.shift(); if (alcanzados.has(id)) continue; alcanzados.add(id); cola.push(...con.get(id)); } };
+    const recorrer = () => { alcanzados.clear(); const cola = [...inicio]; while (cola.length) { const id = cola.shift(); if (alcanzados.has(id)) continue; alcanzados.add(id); cola.push(...con.get(id)); } };
     recorrer();
     for (let cambio = true; cambio;) {
       cambio = false;
@@ -202,7 +323,7 @@
         if (op) { unir(r, op[0], op[1], esCirc(r) && esCirc(op[0]) ? 'paso' : 'puerta'); recorrer(); cambio = true; }
       }
     }
-    return { puertas, entrada, sinAcceso: R.filter(r => !alcanzados.has(r.id)) };
+    return { puertas, entrada, sinAcceso: R.filter(r => !r.auto && !alcanzados.has(r.id)) };
   }
 
   // Dibuja un vano en un muro (coordenadas del lote) pasándolo a pantalla. La hoja abre hacia «hacia».
@@ -223,8 +344,8 @@
     return o;
   }
 
-  function dibujarPuertas() {
-    const { puertas, entrada } = calcularPuertas(); let s = '';
+  function dibujarPuertas(E) {
+    const { puertas, entrada } = E; let s = '';
     for (const p of puertas) {
       const l = p.lado, L = l.t1 - l.t0, bano = p.a.tipo === 'bano' || p.b.tipo === 'bano';
       const a = p.tipo === 'abierto' ? Math.max(0.8, L - 0.5) : Math.min(p.tipo === 'paso' ? 1.2 : bano ? 0.75 : 0.9, L - 0.3);
@@ -260,34 +381,46 @@
 
   /* ---------- Corte A-A (se genera solo desde la planta; la calle queda a la izquierda) ---------- */
   function drawSection(live) {
-    const { d } = state.lot, sx = state.sx, H = state.fachada.alto;
-    const cut = state.rooms.filter(r => sx > r.x && sx < r.x + r.w);
-    const hmax = Math.max(H, ...cut.filter(r => !r.patio).map(r => r.alto + 3)) + 1.5;
+    const { d } = state.lot, sx = state.sx, H = state.fachada.alto, N = state.niveles;
+    // Lo que corta la línea A–A en cada nivel (ambientes, patios y pasillos automáticos; no las llegadas de escalera).
+    const corta = n => espacios(n).todos.filter(r => !String(r.id).startsWith('lleg-') && sx > r.x && sx < r.x + r.w);
+    const hmax = Math.max(H, baseNivel(N) + 2.5) + 1.5;
     let s = `<rect x="-2" y="${G}" width="${d + 4}" height="1.2" fill="url(#tierra)"/><line x1="-2" y1="${G}" x2="${d + 2}" y2="${G}" stroke="${C.tinta}" stroke-width="2"/>`;
-    let fig = null;
-    for (const r of cut) {
-      const s0 = d - (r.y + r.h), Lg = r.h, sel = live && ui.sel && ui.sel.kind === 'room' && ui.sel.id === r.id;
-      s += `<g data-room="${r.id}" ${live ? 'style="cursor:pointer"' : ''}>`;
-      if (live) s += `<rect x="${s0}" y="${G - hmax + 1}" width="${Lg}" height="${hmax - 1}" fill="${sel ? C.albero : 'transparent'}" fill-opacity="${sel ? 0.18 : 0}"/>`;
-      if (r.patio) {
-        s += `<rect x="${s0}" y="${G - 0.08}" width="${Lg}" height="0.16" fill="url(#suelo-${r.suelo})" stroke="${C.tinta}" stroke-width="1"/>`;
-        for (const o of r.objetos) s += `<g transform="translate(${d - (r.y + o.y)} ${G})">${OB(o.tipo).side()}</g>`;
-        const ty = G - Math.min(hmax - 2, 5.5);
-        s += txt(s0 + Lg / 2, ty, r.nombre, 0.5, { extra: 'font-style="italic"' }) + txt(s0 + Lg / 2, ty + 0.55, r.funcion.toUpperCase(), 0.4, { font: 'mono', fill: C.almagra });
-      } else {
-        const h = r.alto, top = G - h;
-        s += `<rect x="${s0}" y="${top}" width="${Lg}" height="${h}" fill="#f6efdf"/>`;
-        s += `<g transform="translate(${s0} ${top})">${T(r.techo).draw(Lg)}</g>`;
-        if (r.tipo === 'galeria') s += `<rect x="${s0}" y="${top}" width="0.12" height="${h}" fill="${C.tinta}"/><rect x="${s0 + Lg - 0.12}" y="${top}" width="0.12" height="${h}" fill="${C.tinta}"/>`;
-        else s += `<rect x="${s0 - 0.15}" y="${top}" width="0.3" height="${h}" fill="${C.tinta}"/><rect x="${s0 + Lg - 0.15}" y="${top}" width="0.3" height="${h}" fill="${C.tinta}"/>`;
-        s += txt(s0 + Lg / 2, top + h * 0.45, r.nombre, clamp(Lg / 6, 0.3, 0.5), { extra: 'font-style="italic"' });
-        s += txt(s0 + Lg / 2, top + h * 0.45 + 0.5, T(r.techo).nombre, clamp(Lg / 8, 0.25, 0.38), { font: 'mono', fill: C.almagra });
-        if (fig === null && Lg > 2) fig = s0 + Lg * 0.25;
+    let fig = null, alguno = false;
+    for (let n = 0; n < N; n++) {
+      const b = baseNivel(n), suelo = G - b, cut = corta(n), arriba = n + 1 < N ? corta(n + 1).filter(o => !o.patio) : [];
+      for (const r of cut) {
+        if (r.patio && n > 0) continue;
+        alguno = true;
+        const s0 = d - (r.y + r.h), Lg = r.h, sel = live && ui.sel && ui.sel.kind === 'room' && ui.sel.id === r.id;
+        s += `<g ${live && !r.auto ? `data-room="${r.id}" style="cursor:pointer"` : ''}>`;
+        if (live && !r.auto) s += `<rect x="${s0}" y="${suelo - (r.patio ? hmax - 1 - b : altoNivel(n))}" width="${Lg}" height="${r.patio ? hmax - 1 - b : altoNivel(n)}" fill="${sel ? C.albero : 'transparent'}" fill-opacity="${sel ? 0.18 : 0}"/>`;
+        if (r.patio) {
+          s += `<rect x="${s0}" y="${G - 0.08}" width="${Lg}" height="0.16" fill="url(#suelo-${r.suelo})" stroke="${C.tinta}" stroke-width="1"/>`;
+          for (const o of r.objetos) s += `<g transform="translate(${d - (r.y + o.y)} ${G})">${OB(o.tipo).side()}</g>`;
+          const ty = G - Math.min(hmax - 2, 5.5);
+          s += txt(s0 + Lg / 2, ty, r.nombre, 0.5, { extra: 'font-style="italic"' }) + txt(s0 + Lg / 2, ty + 0.55, r.funcion.toUpperCase(), 0.4, { font: 'mono', fill: C.almagra });
+        } else if (r.tipo === 'terraza') {
+          s += `<rect x="${s0 - 0.15}" y="${suelo - 0.3}" width="${Lg + 0.3}" height="0.3" fill="${C.tinta}"/><rect x="${s0 - 0.15}" y="${suelo - 1.3}" width="0.25" height="1" fill="${C.tinta}"/><rect x="${s0 + Lg - 0.1}" y="${suelo - 1.3}" width="0.25" height="1" fill="${C.tinta}"/>`
+            + txt(s0 + Lg / 2, suelo - 1.6, r.nombre, clamp(Lg / 6, 0.3, 0.5), { extra: 'font-style="italic"' });
+        } else {
+          const h = r.alto, top = suelo - h, cubierto = arriba.some(o => o.y < r.y + r.h - 1e-6 && r.y < o.y + o.h - 1e-6);
+          s += `<rect x="${s0}" y="${top}" width="${Lg}" height="${h}" fill="#f6efdf"/>`;
+          if (n > 0) s += `<rect x="${s0 - 0.15}" y="${suelo}" width="${Lg + 0.3}" height="0.3" fill="${C.tinta}"/>`;
+          s += cubierto ? `<rect x="${s0 - 0.15}" y="${top - 0.3}" width="${Lg + 0.3}" height="0.3" fill="${C.tinta}"/>` : `<g transform="translate(${s0} ${top})">${T(r.techo).draw(Lg)}</g>`;
+          if (r.tipo === 'galeria') s += `<rect x="${s0}" y="${top}" width="0.12" height="${h}" fill="${C.tinta}"/><rect x="${s0 + Lg - 0.12}" y="${top}" width="0.12" height="${h}" fill="${C.tinta}"/>`;
+          else s += `<rect x="${s0 - 0.15}" y="${top}" width="0.3" height="${h}" fill="${C.tinta}"/><rect x="${s0 + Lg - 0.15}" y="${top}" width="0.3" height="${h}" fill="${C.tinta}"/>`;
+          if (r.tipo === 'escalera') { const sub = altoNivel(n), k = 10; s += `<path d="M${s0} ${suelo}${Array.from({ length: k }, (_, i) => ` V${suelo - sub * (i + 1) / k} H${s0 + Lg * (i + 1) / k}`).join('')}" fill="none" stroke="${C.tinta}" stroke-width="1.4"/>`; }
+          s += txt(s0 + Lg / 2, top + h * 0.45, r.nombre, clamp(Lg / 6, 0.3, 0.5), { extra: 'font-style="italic"' });
+          if (!cubierto && !r.auto) s += txt(s0 + Lg / 2, top + h * 0.45 + 0.5, T(r.techo).nombre, clamp(Lg / 8, 0.25, 0.38), { font: 'mono', fill: C.almagra });
+          if (fig === null && n === 0 && Lg > 2) fig = s0 + Lg * 0.25;
+        }
+        if (sel) s += `<rect x="${s0}" y="${suelo - altoNivel(n)}" width="${Lg}" height="${altoNivel(n)}" fill="none" stroke="${C.azul}" stroke-width="2.5" stroke-dasharray="6 3" pointer-events="none"/>`;
+        s += '</g>';
       }
-      if (sel) s += `<rect x="${s0}" y="${G - hmax + 1}" width="${Lg}" height="${hmax - 1}" fill="none" stroke="${C.azul}" stroke-width="2.5" stroke-dasharray="6 3" pointer-events="none"/>`;
-      s += '</g>';
+      if (N > 1) s += txt(d + 1.2, suelo - 0.4, n === 0 ? 'PB' : `P${n}`, 0.45, { font: 'mono', fill: C.almagra });
     }
-    if (!cut.length) s += txt(d / 2, G - 4, 'La línea A–A no atraviesa ningún ambiente', 0.6, { font: 'mono' });
+    if (!alguno) s += txt(d / 2, G - 4, 'La línea A–A no atraviesa ningún ambiente', 0.6, { font: 'mono' });
     s += `<rect x="-0.35" y="${G - H}" width="0.35" height="${H}" fill="${C.tinta}"/>`;
     if (fig !== null) s += figura(fig);
     s += txt(-1, G + 0.9, 'CALLE', 0.45, { font: 'mono' }) + txt(d + 1, G + 0.9, 'FONDO', 0.45, { font: 'mono' });
@@ -340,7 +473,15 @@
     const marco = (v, x, y, w, h, titulo) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${C.cal}" stroke="${C.tinta}" stroke-width="1.5"/>` + t(x + 12, y + 26, titulo, 22)
       + `<svg x="${x + 10}" y="${y + 36}" width="${w - 20}" height="${h - 46}" viewBox="${v.vb.join(' ')}" preserveAspectRatio="xMidYMid meet">${v.body}</svg>`;
     let s = `<rect width="1600" height="1000" fill="${C.papel}"/><rect x="20" y="20" width="1560" height="960" fill="none" stroke="${C.tinta}" stroke-width="3"/><rect x="27" y="27" width="1546" height="946" fill="none" stroke="${C.tinta}" stroke-width="1"/>`;
-    s += marco(drawPlan(false), 40, 40, 1150, 420, 'PLANTA') + marco(drawFacade(false), 40, 480, 560, 480, 'FACHADA') + marco(drawSection(false), 620, 480, 570, 480, 'CORTE A–A');
+    // Plantas: una por nivel, apiladas en el mismo marco
+    const N = state.niveles, hp = (420 - 46) / N;
+    s += `<rect x="40" y="40" width="1150" height="420" fill="${C.cal}" stroke="${C.tinta}" stroke-width="1.5"/>` + t(52, 66, N > 1 ? 'PLANTAS' : 'PLANTA', 22);
+    for (let n = 0; n < N; n++) {
+      const v = drawPlan(false, n), y0 = 76 + n * hp;
+      if (N > 1) s += t(52, y0 + 18, nombreNivel(n).toUpperCase(), 16, 'mono', '', C.almagra);
+      s += `<svg x="50" y="${y0}" width="1130" height="${hp - 6}" viewBox="${v.vb.join(' ')}" preserveAspectRatio="xMidYMid meet">${v.body}</svg>`;
+    }
+    s += marco(drawFacade(false), 40, 480, 560, 480, 'FACHADA') + marco(drawSection(false), 620, 480, 570, 480, 'CORTE A–A');
     const rx = 1210, cx = rx + 175;
     s += `<rect x="${rx}" y="40" width="350" height="920" fill="${C.cal}" stroke="${C.tinta}" stroke-width="1.5"/>`;
     for (let i = 0; i < 25; i++) for (let j = 0; j < 2; j++) s += `<rect x="${rx + i * 14}" y="${40 + j * 14}" width="14" height="14" fill="${(i + j) % 2 ? C.azul : C.cal}"/>`;
@@ -401,7 +542,7 @@
     else if (s && s.kind === 'fac' && facEl(s.id)) { const d = F(facEl(s.id).el); modo = 'sel'; cancelar = true; msg = `Seleccionaste «${d.nombre}» (${d.epoca}). Arrastrala para moverla; en la ficha podés escalarla, espejarla o borrarla.`; }
     else msg = {
       patios: state.rooms.some(r => r.patio) ? 'Elegí otro tipo de patio en el archivo, o tocá un patio de la planta para cambiar su tamaño, función u objetos. Cuando estén listos, seguí con los ambientes.' : 'Empezá eligiendo un tipo de patio en el archivo de arriba.',
-      ambientes: 'Elegí un ambiente en el archivo de arriba, o hacé clic en uno de la planta para editarlo. Los patios quedan fijos.',
+      ambientes: `Estás armando: ${nombreNivel(ui.nivel)}. Elegí un ambiente en el archivo, o hacé clic en uno de la planta para editarlo. Si un ambiente no da a un patio, galería o pasillo, la casa le traza un pasillo sola.`,
       fachada: 'Elegí una pieza en el archivo de arriba, o hacé clic en una pieza de la fachada para editarla.',
       techos: 'Hacé clic en un ambiente del corte para elegir su techo.', lamina: 'Exportá la lámina como imagen (PNG) o como dibujo vectorial (SVG).' }[ui.paso];
     el.className = 'aviso ' + modo;
@@ -468,7 +609,32 @@
     $('#paso-texto').textContent = info.texto;
     $('#mesa-titulo').textContent = { planta: 'Planta', fachada: 'Fachada', corte: 'Corte A–A', lamina: 'Lámina' }[info.vista];
     document.body.dataset.paso = p;
-    renderArchivo(); renderView(); renderFicha();
+    if (p === 'patios') ui.nivel = 0;   // los patios van siempre en planta baja
+    if (r && niv(r) !== ui.nivel && vista() === 'planta') ui.sel = null;
+    renderNiveles(); renderArchivo(); renderView(); renderFicha();
+  }
+
+  // Selector de niveles (solo en el paso Ambientes): planta baja, pisos y botones para sumar o quitar.
+  function renderNiveles() {
+    const el = $('#niveles'), N = state.niveles;
+    el.hidden = ui.paso !== 'ambientes';
+    if (el.hidden) return;
+    el.innerHTML = '<span class="niv-tit">Niveles</span>' + [...Array(N).keys()].map(n => `<button class="btn ${n === ui.nivel ? 'on' : ''}" data-niv="${n}">${nombreNivel(n)}</button>`).join('')
+      + (N < 4 ? '<button class="btn mas" data-niv="mas">+ Agregar nivel</button>' : '') + (N > 1 ? '<button class="btn menos" data-niv="menos">− Quitar el último</button>' : '');
+    el.querySelectorAll('[data-niv]').forEach(b => b.onclick = () => {
+      const v = b.dataset.niv;
+      if (v === 'mas') {
+        state.niveles++; ui.nivel = state.niveles - 1;
+        state.fachada.alto = Math.max(state.fachada.alto, Math.ceil(baseNivel(state.niveles) + 1));
+        toast(`${nombreNivel(ui.nivel)} agregado. Para llegar, poné una «Escalera» en el nivel de abajo.`);
+      } else if (v === 'menos') {
+        const ultimo = state.niveles - 1, cuantos = state.rooms.filter(r => niv(r) === ultimo).length;
+        if (cuantos && !confirm(`¿Quitar ${nombreNivel(ultimo)} y sus ${cuantos} ambientes?`)) return;
+        state.rooms = state.rooms.filter(r => niv(r) !== ultimo); state.niveles--; ui.nivel = Math.min(ui.nivel, state.niveles - 1);
+      } else ui.nivel = +v;
+      ui.sel = null; ui.drag = null;
+      renderNiveles(); commit(true);
+    });
   }
 
   function renderStatus() {
@@ -478,11 +644,16 @@
     $('#status').innerHTML = `<span>Lote ${fmt(state.lot.w)}×${fmt(state.lot.d)} m</span><span>Cubierto ${fmt(cub)} m²</span>`
       + `<span>Patios ${pats.length} · ${fmt(pa)} m² (${Math.round(pa / lote * 100)}%)</span><span>Estilos mezclados: ${estilos}</span><span>Piezas nuevas: 0</span>`
       + (pats.length ? '' : '<span class="warn">⚠ Toda casa necesita al menos un patio</span>')
-      + (() => { const sin = rooms.length ? calcularPuertas().sinAcceso : []; return sin.length ? `<span class="warn">⚠ Sin acceso: ${sin.map(r => esc(r.nombre)).join(', ')} (sumá un pasillo o movelos)</span>` : ''; })();
+      + (state.niveles > 1 ? `<span>Niveles: ${state.niveles}</span>` : '')
+      + (() => {
+        const sin = []; for (let n = 0; n < state.niveles; n++) if (rooms.some(r => niv(r) === n)) sin.push(...espacios(n).sinAcceso.map(r => n ? `${r.nombre} (${nombreNivel(n)})` : r.nombre));
+        const falta = [...Array(state.niveles).keys()].filter(n => n > 0 && rooms.some(r => niv(r) === n) && !rooms.some(r => niv(r) === n - 1 && r.tipo === 'escalera'));
+        return (sin.length ? `<span class="warn">⚠ Sin acceso: ${sin.map(esc).join(', ')}</span>` : '') + (falta.length ? `<span class="warn">⚠ Falta una escalera para subir a: ${falta.map(nombreNivel).join(', ')}</span>` : '');
+      })();
   }
 
   function commit(full) {
-    renderView(); renderStatus(); renderArchivo();
+    renderView(); renderStatus(); renderArchivo(); renderNiveles();
     if (full) renderFicha();
     save();
   }
@@ -510,7 +681,7 @@
         + `<div class="row">${num('lot.w', state.lot.w, 6, 20, 0.5, 'Frente (m)')}${num('lot.d', state.lot.d, 12, 50, 0.5, 'Fondo (m)')}</div>`;
     } else if (s.kind === 'room') {
       const r = room(s.id);
-      if (!r.patio) h = `<div class="ftit">${esc(r.nombre)}</div><div class="fep">Ambiente · ${fmt(r.w * r.h)} m²</div>`
+      if (!r.patio) h = `<div class="ftit">${esc(r.nombre)}</div><div class="fep">Ambiente · ${nombreNivel(niv(r))} · ${fmt(r.w * r.h)} m²</div>`
         + text('nombre', r.nombre, 'Nombre') + sel('tipo', r.tipo, CAT.ambientes.map(a => [a.id, a.nombre]), 'Tipo') + tam(r)
         + rango('alto', r.alto, 2.4, 7, 0.1, 'Altura interior', `${fmt(r.alto)} m`)
         + `<label>Techo</label><div class="techo-ficha">${thumb({ kind: 'techo', id: r.techo })}</div>`
@@ -694,7 +865,7 @@
       if (w < 1 || h < 1) { w = Math.min(def.w, lw); h = Math.min(def.h, ld); x = clamp(snap(d.x0 - w / 2), 0, lw - w); y = clamp(snap(d.y0 - h / 2), 0, ld - h); }
       x = clamp(x, 0, lw); y = clamp(y, 0, ld); w = Math.min(w, lw - x); h = Math.min(h, ld - y);
       const r = tool.kind === 'amb'
-        ? { id: uid(), tipo: def.id, patio: false, nombre: def.nombre, x, y, w, h, alto: 4.2, techo: def.techo }
+        ? { id: uid(), tipo: def.id, patio: false, nombre: def.nombre, x, y, w, h, alto: ui.nivel ? 3.2 : 4.2, techo: def.techo, nivel: ui.nivel }
         : { id: uid(), tipo: def.id, patio: true, nombre: def.nombre, x, y, w, h, funcion: def.funcion, suelo: def.suelo, objetos: [] };
       if (w < 1 || h < 1 || overlaps(r)) { toast('No entra ahí: se superpone con otro ambiente o se sale del lote. Probá en un lugar libre, o borrá algo antes.'); return renderView(); }
       state.rooms.push(r); ui.sel = { kind: 'room', id: r.id }; ui.tool = null;
@@ -718,7 +889,7 @@
   // franjas de ambientes y de patios alternadas (patio entero, central o lateral) y al fondo un patio o huerta.
   function remixPlanta() {
     const { w, d } = state.lot, rooms = [];
-    const amb = (tipo, x, y, rw, rh) => rooms.push({ id: uid(), tipo, patio: false, nombre: A(tipo).nombre, x, y, w: rw, h: rh, alto: snap(rnd(3.6, 5), 0.1), techo: elegir(CAT.techos).id });
+    const amb = (tipo, x, y, rw, rh, nivel = 0) => { const r = { id: uid(), tipo, patio: false, nombre: A(tipo).nombre, x, y, w: rw, h: rh, nivel, alto: snap(nivel ? rnd(3, 3.6) : rnd(3.6, 5), 0.1), techo: elegir(CAT.techos).id }; rooms.push(r); return r; };
     const pat = (tipo, x, y, rw, rh) => {
       const p = PT(tipo), n = Math.floor(rnd(1, 4)), largo = rw >= rh;
       const objetos = Array.from({ length: n }, (_, i) => ({ id: uid(), tipo: elegir(CAT.objetos).id,
@@ -766,7 +937,24 @@
       const r = rooms.filter(r => !r.patio && !['zaguan', 'living', 'galeria', 'pasillo'].includes(r.tipo)).sort((a, b) => a.w * a.h - b.w * b.h)[0];
       if (r) { r.tipo = 'bano'; r.nombre = A('bano').nombre; r.techo = elegir(CAT.techos).id; }
     }
+    // La mitad de las veces, un piso alto: escalera al frente de la galería, galería arriba y ambientes
+    // sobre los de abajo (los patios quedan como vacíos).
+    state.niveles = 1;
+    const tira = rooms.find(r => (r.tipo === 'galeria' || r.tipo === 'pasillo') && r.h >= 7);
+    if (tira && Math.random() < 0.5) {
+      tira.h -= 3;
+      amb('escalera', tira.x, tira.y + tira.h, tira.w, 3);
+      amb('galeria', tira.x, tira.y, tira.w, tira.h, 1);
+      const pool2 = mezclar(['dormitorio', 'dormitorio', 'estudio', 'bano', 'terraza', 'dormitorio', 'estudio']);
+      for (const r of rooms.filter(r => !r.nivel && !r.patio && !esCirc(r) || r.tipo === 'zaguan')) if (Math.random() < 0.85)
+        amb(pool2.length ? pool2.shift() : elegir(['dormitorio', 'estudio', 'dormitorio']), r.x, r.y, r.w, r.h, 1);
+      state.niveles = 2;
+    }
     state.rooms = rooms;
+    if (state.niveles > 1) {   // lo que quede aislado del otro lado de un vacío, no se construye
+      const sin = new Set(espacios(1).sinAcceso.map(r => r.id));
+      state.rooms = rooms.filter(r => !sin.has(r.id));
+    }
     const p = elegir(rooms.filter(r => r.patio));
     state.sx = clamp(snap(p.x + p.w / 2, 0.25), 0.25, w - 0.25);   // el corte pasa por un patio
     return rooms.filter(r => r.y + r.h === d).sort((a, b) => a.x - b.x);
@@ -776,7 +964,7 @@
   function remixFachada(frente) {
     const pick = cat => elegir(CAT.fachada.filter(e => e.cat === cat));
     const azar = p => Math.random() < p;
-    const { w } = state.lot, H = state.fachada.alto = snap(rnd(6, 9)), top = G - H, f = [];
+    const { w } = state.lot, H = state.fachada.alto = Math.max(snap(rnd(6, 9)), Math.ceil(baseNivel(state.niveles) + 1.5)), top = G - H, f = [];
     const add = (d, x, y, s = 1, flip = false) => f.push({ id: uid(), el: d.id, x, y, s, flip });
     const z = pick('zocalo'); add(z, 0, G - z.h);
     if (azar(0.6)) { const c = pick('columna'), s = (H - z.h - 0.6) / c.h; add(c, 0.15, G - z.h - c.h * s, s); add(c, w - 0.15 - c.w * s, G - z.h - c.h * s, s); }
@@ -787,7 +975,13 @@
     for (const r of frente) {
       const cx = r.x + r.w / 2;
       if (r.tipo === 'zaguan') { px = cx; add(puerta, cx - puerta.w * ds / 2, G - puerta.h * ds, ds); }
-      else { const vs = Math.min(1, (r.w - 0.6) / ven.w); add(ven, cx - ven.w * vs / 2, Math.min(G - H * 0.45 - ven.h * vs / 2, G - 0.3 - ven.h * vs), vs); }
+      else { const vs = Math.min(1, (r.w - 0.6) / ven.w, 2.6 / ven.h); add(ven, cx - ven.w * vs / 2, Math.min(G - 1.9 - ven.h * vs / 2, G - 0.3 - ven.h * vs), vs); }
+    }
+    // Ventanas del piso alto, frente a los ambientes de arriba que dan a la calle
+    const ven2 = pick('ventana');
+    for (const r of state.rooms.filter(r => r.nivel === 1 && r.y + r.h === state.lot.d)) {
+      const vs = Math.min(1, (r.w - 0.6) / ven2.w, 2.2 / ven2.h), cy = G - baseNivel(1) - 1.6;
+      add(ven2, r.x + r.w / 2 - ven2.w * vs / 2, Math.max(top + 0.3, cy - ven2.h * vs / 2), vs);
     }
     if (azar(0.5)) { const o = pick('ornamento'); add(o, px - o.w / 2, G - puerta.h * ds - o.h - 0.25); }
     const r = pick('remate'); add(r, w / 2 - r.w / 2, top - r.h + 0.05);
@@ -835,19 +1029,19 @@
   $('#b-remix').onclick = remix;
   $('#b-nueva').onclick = () => {
     if (!confirm('¿Empezar una casa vacía? Si no guardaste la actual, se pierde.')) return;
-    state = casaVacia();
+    state = normalizar(casaVacia()); ui.nivel = 0;
     nombre.value = state.nombre; ui.sel = null; ui.tool = null; setPaso('patios'); commit(true);
   };
   $('#b-original').onclick = () => {
     if (!confirm('¿Volver a la casa chorizo original? Si no guardaste la actual, se pierde.')) return;
-    state = casaInicial(); nombre.value = state.nombre; ui.sel = null; ui.tool = null; commit(true);
+    state = normalizar(casaInicial()); ui.nivel = 0; nombre.value = state.nombre; ui.sel = null; ui.tool = null; commit(true);
   };
   $('#b-guardar').onclick = () => bajar(slug() + '.json', new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' }));
   $('#b-abrir').onclick = () => $('#f-abrir').click();
   $('#f-abrir').onchange = e => {
     const file = e.target.files[0]; if (!file) return;
     file.text().then(txt => {
-      try { const s = JSON.parse(txt); if (s.version !== 2) throw 0; s.facade = s.facade.filter(f => F(f.el)); state = s; nombre.value = state.nombre; ui.sel = null; commit(true); toast('Casa abierta.'); }
+      try { const s = JSON.parse(txt); if (s.version !== 2) throw 0; s.facade = s.facade.filter(f => F(f.el)); state = normalizar(s); ui.nivel = 0; nombre.value = state.nombre; ui.sel = null; commit(true); toast('Casa abierta.'); }
       catch { toast('Ese archivo no es una casa de este juego.'); }
     });
     e.target.value = '';
