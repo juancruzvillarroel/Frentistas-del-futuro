@@ -103,7 +103,38 @@
   const txt = (x, y, t, size, o = {}) => `<text x="${x}" y="${y}" font-size="${size}" font-family="${FONT[o.font || 'serif']}" text-anchor="${o.anchor || 'middle'}" fill="${o.fill || C.tinta}" ${o.extra || ''}>${esc(t)}</text>`;
   const halo = `stroke="${C.cal}" stroke-width="3" paint-order="stroke" pointer-events="none"`;
   const art = (def, w, h) => def.img ? `<image href="${def.img}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none"/>` : def.draw(w, h);
-  const figura = x => `<g transform="translate(${x} ${G})" fill="none" stroke="${C.tinta}" stroke-width="1" pointer-events="none"><circle cx="0" cy="-1.62" r="0.12"/><path d="M0 -1.5 V-0.85 L-0.15 0 M0 -0.85 L0.15 0 M-0.25 -1.05 L0 -1.4 L0.25 -1.05"/></g>`;
+  /* ---------- Habitantes de distintas épocas ----------
+     Azar con semilla: mientras no cambien los ambientes, las mismas personas quedan en el mismo lugar. */
+  function azarCon(semilla) {
+    let h = 1779033703; for (const c of semilla) h = Math.imul(h ^ c.charCodeAt(0), 3432918353);
+    return () => { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
+  }
+  const barajar = (l, rnd) => { const a = [...l]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const semillaCasa = extra => state.rooms.map(r => r.id).sort().join('') + '|' + extra;
+
+  // Planta: 2 a 4 personas en ambientes o patios, a un costado del equipamiento.
+  function habitantesPlanta(E, n) {
+    const rnd = azarCon(semillaCasa('p' + n)), lugares = barajar(E.base.filter(r => r.w * r.h >= 4 && r.tipo !== 'escalera'), rnd);
+    let s = '';
+    for (const r of lugares.slice(0, 2 + Math.floor(rnd() * 3))) {
+      const p = CAT.personas[Math.floor(rnd() * CAT.personas.length)], largo = r.h >= r.w;
+      const a = r.patio ? 0.3 + rnd() * 0.4 : (rnd() < 0.5 ? 0.2 : 0.8), b = 0.3 + rnd() * 0.4;
+      const [X, Y] = scr(r.x + r.w * (largo ? b : a), r.y + r.h * (largo ? a : b));
+      s += `<g transform="translate(${X} ${Y}) rotate(${Math.floor(rnd() * 360)}) scale(1.3)">${p.planta()}</g>`;
+    }
+    return `<g pointer-events="none">${s}</g>`;
+  }
+
+  // Corte: 2 o 3 personas paradas en los ambientes y patios cortados.
+  function habitantesCorte(lugares) {
+    const rnd = azarCon(semillaCasa('c')); let s = '';
+    for (const c of barajar(lugares.filter(c => c.Lg >= 2), rnd).slice(0, 2 + Math.floor(rnd() * 2))) {
+      // a un costado, para no tapar el nombre del ambiente que va al centro
+      const p = CAT.personas[Math.floor(rnd() * CAT.personas.length)], x = c.s0 + c.Lg * (rnd() < 0.5 ? 0.15 + rnd() * 0.15 : 0.7 + rnd() * 0.15);
+      s += `<g transform="translate(${x} ${c.suelo}) scale(${rnd() < 0.5 ? -1 : 1} 1)">${p.lado()}</g>`;
+    }
+    return `<g pointer-events="none">${s}</g>`;
+  }
 
   function thumb(h) {
     if (h.kind === 'fac') { const d = F(h.id), w = FULL.has(d.cat) ? 3 : d.w; return `<svg viewBox="-0.4 -0.5 ${w + 0.8} ${d.h + 0.9}">${art(d, w, d.h)}</svg>`; }
@@ -139,6 +170,7 @@
     for (const r of E.base) s += planRoom(r, live);
     if (n === 0) s += `<line x1="0" y1="0" x2="0" y2="${w}" stroke="${C.tinta}" stroke-width="4"/>`;
     if (!(live && ui.paso === 'patios')) s += dibujarPuertas(E, n);
+    s += habitantesPlanta(E, n);
     const sx = state.sx;
     s += `<line x1="-1" y1="${sx}" x2="${d + 1}" y2="${sx}" stroke="${C.almagra}" stroke-width="1.4" stroke-dasharray="10 4 2 4" pointer-events="none"/>`;
     for (const X of [-1, d + 1]) s += `<g ${live ? 'data-handle="corte" style="cursor:ns-resize"' : ''}><circle cx="${X}" cy="${sx}" r="0.45" fill="${C.almagra}" stroke="${C.tinta}" stroke-width="1"/>${txt(X, sx + 0.2, 'A', 0.55, { font: 'mono', fill: C.cal, extra: 'pointer-events="none"' })}</g>`;
@@ -386,7 +418,8 @@
     const corta = n => espacios(n).todos.filter(r => !String(r.id).startsWith('lleg-') && sx > r.x && sx < r.x + r.w);
     const hmax = Math.max(H, baseNivel(N) + 2.5) + 1.5;
     let s = `<rect x="-2" y="${G}" width="${d + 4}" height="1.2" fill="url(#tierra)"/><line x1="-2" y1="${G}" x2="${d + 2}" y2="${G}" stroke="${C.tinta}" stroke-width="2"/>`;
-    let fig = null, alguno = false;
+    let alguno = false;
+    const lugares = [];   // dónde pueden aparecer habitantes: { s0, Lg, suelo }
     for (let n = 0; n < N; n++) {
       const b = baseNivel(n), suelo = G - b, cut = corta(n), arriba = n + 1 < N ? corta(n + 1).filter(o => !o.patio) : [];
       for (const r of cut) {
@@ -398,6 +431,7 @@
         if (r.patio) {
           s += `<rect x="${s0}" y="${G - 0.08}" width="${Lg}" height="0.16" fill="url(#suelo-${r.suelo})" stroke="${C.tinta}" stroke-width="1"/>`;
           for (const o of r.objetos) s += `<g transform="translate(${d - (r.y + o.y)} ${G})">${OB(o.tipo).side()}</g>`;
+          lugares.push({ s0, Lg, suelo: G });
           const ty = G - Math.min(hmax - 2, 5.5);
           s += txt(s0 + Lg / 2, ty, r.nombre, 0.5, { extra: 'font-style="italic"' }) + txt(s0 + Lg / 2, ty + 0.55, r.funcion.toUpperCase(), 0.4, { font: 'mono', fill: C.almagra });
         } else if (r.tipo === 'terraza') {
@@ -413,7 +447,7 @@
           if (r.tipo === 'escalera') { const sub = altoNivel(n), k = 10; s += `<path d="M${s0} ${suelo}${Array.from({ length: k }, (_, i) => ` V${suelo - sub * (i + 1) / k} H${s0 + Lg * (i + 1) / k}`).join('')}" fill="none" stroke="${C.tinta}" stroke-width="1.4"/>`; }
           s += txt(s0 + Lg / 2, top + h * 0.45, r.nombre, clamp(Lg / 6, 0.3, 0.5), { extra: 'font-style="italic"' });
           if (!cubierto && !r.auto) s += txt(s0 + Lg / 2, top + h * 0.45 + 0.5, T(r.techo).nombre, clamp(Lg / 8, 0.25, 0.38), { font: 'mono', fill: C.almagra });
-          if (fig === null && n === 0 && Lg > 2) fig = s0 + Lg * 0.25;
+          if (r.tipo !== 'escalera') lugares.push({ s0, Lg, suelo });
         }
         if (sel) s += `<rect x="${s0}" y="${suelo - altoNivel(n)}" width="${Lg}" height="${altoNivel(n)}" fill="none" stroke="${C.azul}" stroke-width="2.5" stroke-dasharray="6 3" pointer-events="none"/>`;
         s += '</g>';
@@ -422,7 +456,7 @@
     }
     if (!alguno) s += txt(d / 2, G - 4, 'La línea A–A no atraviesa ningún ambiente', 0.6, { font: 'mono' });
     s += `<rect x="-0.35" y="${G - H}" width="0.35" height="${H}" fill="${C.tinta}"/>`;
-    if (fig !== null) s += figura(fig);
+    s += habitantesCorte(lugares);
     s += txt(-1, G + 0.9, 'CALLE', 0.45, { font: 'mono' }) + txt(d + 1, G + 0.9, 'FONDO', 0.45, { font: 'mono' });
     return { vb: [-2, G - hmax, d + 4, hmax + 1.6], body: s };
   }
