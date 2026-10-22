@@ -75,7 +75,7 @@ window.Archivo = (() => {
       const p = pos.get(abiertos[li - 1]); if (!p) return;
       const px = p.x + NODOW / 2, py = p.y + p.h;
       for (const n of lista) {
-        const q = pos.get(n.id), on = camino[li - 1] === n.id, h = hilo(px, py, q.x + NODOW / 2, q.y, n.id, on ? 'on' : '');
+        const q = pos.get(n.id), on = camino[li - 1] === n.id, h = hilo(px, py, q.x + NODOW / 2, q.y, n.id, on ? 'on' : opts.estado && opts.estado(n) === 'bloqueado' ? 'off' : '');
         if (on) rojas += h; else lineas += h;
       }
     });
@@ -84,9 +84,10 @@ window.Archivo = (() => {
     const prev = el.dataset.raiz === raiz.sub ? +el.dataset.niveles || 0 : 0;
     let nodos = '';
     nv.forEach((lista, li) => lista.forEach(n => {
-      const p = pos.get(n.id), u = usos(n), on = li === 0 || camino[li - 1] === n.id;
-      const cls = ['nodo', n.raiz && 'raiz', n.hoja && 'hoja', on && 'on', u && 'usado', n.hoja && opts.armado(n.hoja) && 'armado', li >= prev && 'nuevo'].filter(Boolean).join(' ');
-      nodos += `<button class="${cls}" data-nivel="${li}" data-id="${n.id}" style="left:${p.x}px;top:${p.y}px;width:${NODOW}px;height:${p.h}px">`
+      const p = pos.get(n.id), u = usos(n), on = li === 0 || camino[li - 1] === n.id, est = opts.estado ? opts.estado(n) : null;
+      const cls = ['nodo', n.raiz && 'raiz', n.hoja && 'hoja', on && 'on', u && 'usado', n.hoja && opts.armado(n.hoja) && 'armado', li >= prev && 'nuevo', est].filter(Boolean).join(' ');
+      const tit = opts.titulo ? opts.titulo(n) : '';
+      nodos += `<button class="${cls}" data-nivel="${li}" data-id="${n.id}" style="left:${p.x}px;top:${p.y}px;width:${NODOW}px;height:${p.h}px" ${tit ? `title="${tit}"` : ''}>`
         + (n.hoja ? `<span class="th">${opts.thumb(n.hoja)}</span>` : '')
         + `<span class="tx"><span class="lb">${n.label}</span>${n.sub ? `<span class="sb">${n.sub}</span>` : ''}</span>`
         + (u ? `<i class="cnt" title="Veces usada en tu casa">${u}</i>` : '')

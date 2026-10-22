@@ -231,25 +231,28 @@ window.CATALOGO = (() => {
     };
   }
 
-  /* ---------- Piezas de fachada, por estilo ---------- */
+  /* ---------- Piezas de fachada, por estilo ----------
+     afines / contraste: tabla «Combinaciones de fachadas · Casa Planes» del equipo
+     (afinidad formal, proporción, ornamento y materialidad). Al elegir un estilo, solo quedan
+     habilitados los de afinidad alta. Sevilla 2126 es el archivo, no un estilo: combina con todo. */
   const estilos = [
-    { id: 'clasico', nombre: 'Clásico grecorromano', epoca: 's. V a. C. – s. IV' },
-    { id: 'mudejar', nombre: 'Mudéjar y andalusí', epoca: 's. XII – XV' },
-    { id: 'gotico', nombre: 'Gótico', epoca: 's. XIII – XV' },
-    { id: 'renacimiento', nombre: 'Renacimiento', epoca: 's. XVI' },
-    { id: 'barroco', nombre: 'Barroco sevillano', epoca: 's. XVII – XVIII' },
-    { id: 'colonial', nombre: 'Colonial rioplatense', epoca: 's. XVIII' },
-    { id: 'italianizante', nombre: 'Italianizante', epoca: '1880 – 1910 · casa chorizo' },
-    { id: 'academicismo', nombre: 'Academicismo francés', epoca: '1890 – 1930' },
-    { id: 'nouveau', nombre: 'Art nouveau', epoca: '1900 – 1915' },
-    { id: 'regionalismo', nombre: 'Regionalismo sevillano', epoca: '1910 – 1930' },
-    { id: 'neocolonial', nombre: 'Neocolonial', epoca: '1915 – 1940' },
-    { id: 'deco', nombre: 'Art déco', epoca: '1925 – 1940' },
-    { id: 'racionalismo', nombre: 'Racionalismo', epoca: '1927 – 1950' },
-    { id: 'pintoresquista', nombre: 'Chalet pintoresquista', epoca: '1920 – 1950' },
-    { id: 'brutalismo', nombre: 'Brutalismo', epoca: '1955 – 1975' },
-    { id: 'contemporaneo', nombre: 'Contemporáneo', epoca: '1990 – 2030' },
-    { id: 'futuro', nombre: 'Sevilla 2126', epoca: 'archivo digital' }
+    { id: 'clasico', nombre: 'Clásico grecorromano', epoca: 's. V a. C. – s. IV', afines: ['renacimiento', 'barroco', 'italianizante', 'academicismo'], contraste: ['racionalismo', 'brutalismo'] },
+    { id: 'mudejar', nombre: 'Mudéjar y andalusí', epoca: 's. XII – XV', afines: ['gotico', 'barroco', 'colonial', 'regionalismo', 'neocolonial'], contraste: ['brutalismo'] },
+    { id: 'gotico', nombre: 'Gótico', epoca: 's. XIII – XV', afines: ['mudejar', 'regionalismo'], contraste: ['racionalismo'] },
+    { id: 'renacimiento', nombre: 'Renacimiento', epoca: 's. XVI', afines: ['clasico', 'barroco', 'colonial', 'italianizante', 'academicismo'], contraste: ['brutalismo'] },
+    { id: 'barroco', nombre: 'Barroco sevillano', epoca: 's. XVII – XVIII', afines: ['clasico', 'mudejar', 'renacimiento', 'colonial', 'academicismo', 'regionalismo'], contraste: ['racionalismo', 'brutalismo'] },
+    { id: 'colonial', nombre: 'Colonial rioplatense', epoca: 's. XVIII', afines: ['mudejar', 'renacimiento', 'barroco', 'italianizante', 'regionalismo', 'neocolonial'], contraste: ['brutalismo'] },
+    { id: 'italianizante', nombre: 'Italianizante', epoca: '1880 – 1910 · casa chorizo', afines: ['clasico', 'renacimiento', 'colonial', 'academicismo', 'nouveau', 'deco'], contraste: ['brutalismo'] },
+    { id: 'academicismo', nombre: 'Academicismo francés', epoca: '1890 – 1930', afines: ['clasico', 'renacimiento', 'barroco', 'italianizante', 'nouveau', 'deco'], contraste: ['racionalismo', 'brutalismo'] },
+    { id: 'nouveau', nombre: 'Art nouveau', epoca: '1900 – 1915', afines: ['italianizante', 'academicismo', 'deco'], contraste: ['brutalismo'] },
+    { id: 'regionalismo', nombre: 'Regionalismo sevillano', epoca: '1910 – 1930', afines: ['mudejar', 'gotico', 'barroco', 'colonial', 'neocolonial'], contraste: ['brutalismo'] },
+    { id: 'neocolonial', nombre: 'Neocolonial', epoca: '1915 – 1940', afines: ['mudejar', 'renacimiento', 'barroco', 'colonial', 'italianizante', 'regionalismo'], contraste: ['brutalismo'] },
+    { id: 'deco', nombre: 'Art déco', epoca: '1925 – 1940', afines: ['italianizante', 'academicismo', 'nouveau', 'racionalismo'], contraste: [] },
+    { id: 'racionalismo', nombre: 'Racionalismo', epoca: '1927 – 1950', afines: ['deco', 'brutalismo', 'contemporaneo'], contraste: ['clasico', 'gotico', 'barroco', 'academicismo'] },
+    { id: 'pintoresquista', nombre: 'Chalet pintoresquista', epoca: '1920 – 1950', afines: ['italianizante'], contraste: ['racionalismo', 'brutalismo'] },
+    { id: 'brutalismo', nombre: 'Brutalismo', epoca: '1955 – 1975', afines: ['racionalismo', 'contemporaneo'], contraste: ['clasico', 'mudejar', 'renacimiento', 'barroco', 'academicismo'] },
+    { id: 'contemporaneo', nombre: 'Contemporáneo', epoca: '1990 – 2030', afines: ['racionalismo', 'brutalismo'], contraste: [] },
+    { id: 'futuro', nombre: 'Sevilla 2126', epoca: 'archivo digital · combina con todo', comodin: true, afines: [], contraste: [] }
   ];
 
   const pz = (estilo, cat, id, nombre, epoca, anio, w, h, desc, draw) => ({ estilo, cat, id, nombre, epoca, anio, w, h, desc, draw });

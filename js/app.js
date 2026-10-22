@@ -67,7 +67,7 @@
   // Se arranca con el lote vacío; la casa chorizo de Caballito queda como ejemplo en el botón «Casa chorizo».
   const casaVacia = () => ({ ...casaInicial(), nombre: 'Casa sin nombre', rooms: [], facade: [] });
   let state = normalizar(load() || casaVacia());
-  function normalizar(s) { s.niveles = s.niveles || 1; s.rooms.forEach(r => { r.nivel = r.nivel || 0; }); return s; }
+  function normalizar(s) { s.niveles = s.niveles || 1; s.fachada.estilos = s.fachada.estilos || []; s.rooms.forEach(r => { r.nivel = r.nivel || 0; }); return s; }
   const ui = { paso: 'patios', nivel: 0, camino: { patios: [], ambientes: [], fachada: [], techos: [] }, tool: null, sel: null, drag: null };
   const ARBOLES = Archivo.arboles(CAT);
   const vista = () => PASOS[ui.paso].vista;
@@ -79,6 +79,13 @@
   const altoNivel = n => Math.max(3, ...state.rooms.filter(r => niv(r) === n && !r.patio).map(r => r.alto)) + 0.3;
   const baseNivel = n => { let b = 0; for (let k = 0; k < n; k++) b += altoNivel(k); return b; };
   const bloqueos = n => n > 0 ? state.rooms.filter(o => (niv(o) === 0 && o.patio) || (niv(o) === n - 1 && o.tipo === 'escalera')) : [];
+
+  /* ---------- Afinidad entre estilos (tabla «Combinaciones de fachadas» del equipo) ----------
+     Al tocar un estilo en el archivo queda elegido; después solo se habilitan los que tienen afinidad alta
+     con TODOS los elegidos. Sevilla 2126 es el archivo: comodín, siempre habilitado y no restringe. */
+  const elegidos = () => state.fachada.estilos;
+  const habilitado = (id, lista = elegidos()) => lista.includes(id) || EST(id).comodin || lista.filter(e => !EST(e).comodin).every(e => EST(e).afines.includes(id));
+  const sinAfinidad = id => elegidos().filter(e => !EST(e).comodin && !EST(e).afines.includes(id));
 
   const room = id => state.rooms.find(r => r.id === id);
   const facEl = id => state.facade.find(f => f.id === id);
@@ -590,8 +597,19 @@
     const box = $('#archivo');
     box.hidden = ui.paso === 'lamina';
     $('#exportar').hidden = ui.paso !== 'lamina';
+    renderEstilos();
     if (ui.paso === 'lamina') return;
+    const esEstilo = n => ui.paso === 'fachada' && String(n.id).startsWith('est:');
     Archivo.render($('#archivo-mapa'), ARBOLES[ui.paso], ui.camino[ui.paso], {
+      estado: n => !esEstilo(n) ? null : elegidos().includes(n.id.slice(4)) ? 'elegido' : habilitado(n.id.slice(4)) ? null : 'bloqueado',
+      titulo: n => {
+        if (!esEstilo(n)) return '';
+        const id = n.id.slice(4);
+        if (elegidos().includes(id)) return 'Elegido. Abierto, tocalo de nuevo para soltarlo.';
+        if (habilitado(id)) return '';
+        const choque = elegidos().filter(e => EST(e).contraste.includes(id));
+        return `Sin afinidad alta con ${sinAfinidad(id).map(x => EST(x).nombre).join(', ')}` + (choque.length ? ` · contraste fuerte con ${choque.map(x => EST(x).nombre).join(', ')}` : '');
+      },
       usos: h => h.kind === 'fac' ? state.facade.filter(f => f.el === h.id).length
         : h.kind === 'amb' ? state.rooms.filter(r => !r.patio && r.tipo === h.id).length
         : h.kind === 'patio' ? state.rooms.filter(r => r.patio && r.tipo === h.id).length
@@ -600,6 +618,24 @@
       armado: h => !!ui.tool && ui.tool.kind === h.kind && ui.tool.id === h.id,
       thumb,
       onClick: elegirNodo
+    });
+  }
+
+  // Barra de estilos elegidos (paso Fachada): se pueden soltar de a uno o todos.
+  function renderEstilos() {
+    const el = $('#estilos-elegidos'), L = elegidos();
+    el.hidden = ui.paso !== 'fachada';
+    if (el.hidden) return;
+    if (!L.length) { el.innerHTML = '<span>Tocá un estilo para empezar. Después solo se habilitan los de <b>afinidad alta</b> con lo que elegiste; los demás quedan en gris.</span>'; return; }
+    const afines = CAT.estilos.filter(e => !L.includes(e.id) && habilitado(e.id)).map(e => esc(e.nombre));
+    el.innerHTML = '<span>Estilos elegidos:</span>' + L.map(id => `<button class="chip" data-quitar="${id}" title="Soltar este estilo">${esc(EST(id).nombre)} <b>×</b></button>`).join('')
+      + '<button class="btn" data-quitar="*">Soltar todos</button>'
+      + `<span class="afines">Afinidad alta disponible: ${afines.length ? afines.join(' · ') : 'ninguna más (soltá un estilo para abrir otras combinaciones)'}</span>`;
+    el.querySelectorAll('[data-quitar]').forEach(b => b.onclick = () => {
+      const id = b.dataset.quitar;
+      state.fachada.estilos = id === '*' ? [] : L.filter(x => x !== id);
+      if (id === '*' || ui.camino.fachada[0] === 'est:' + id) ui.camino.fachada = [];
+      ui.tool = null; save(); renderArchivo(); renderAviso();
     });
   }
 
@@ -612,6 +648,13 @@
     const cam = ui.camino[ui.paso];
     if (ci === 0) { ui.camino[ui.paso] = []; ui.tool = null; renderArchivo(); return renderAviso(); }
     const nivel = ci - 1;
+    if (ui.paso === 'fachada' && nivel === 0) {   // tocar un estilo lo elige; tocarlo de nuevo (abierto) lo suelta
+      const id = n.id.slice(4), L = elegidos();
+      if (!habilitado(id)) return toast(`«${EST(id).nombre}» no tiene afinidad alta con ${sinAfinidad(id).map(x => EST(x).nombre).join(' ni ')}. Soltá un estilo elegido para habilitarlo.`);
+      if (L.includes(id) && cam[0] === n.id) { state.fachada.estilos = L.filter(x => x !== id); ui.camino.fachada = []; }
+      else { if (!L.includes(id)) state.fachada.estilos = L.concat(id); ui.camino.fachada = [n.id]; }
+      ui.tool = null; save(); renderArchivo(); return renderView();
+    }
     if (n.hoja) {
       ui.camino[ui.paso] = cam.slice(0, nivel).concat(n.id);
       const igual = ui.tool && ui.tool.kind === n.hoja.kind && ui.tool.id === n.hoja.id;
@@ -998,12 +1041,17 @@
 
   // La fachada responde a la planta: la puerta va frente al zaguán y las ventanas frente a los otros ambientes del frente.
   function remixFachada(frente) {
-    const pick = cat => elegir(CAT.fachada.filter(e => e.cat === cat));
+    // Estilos con afinidad alta entre sí, como si alguien los eligiera en el archivo (a veces suma Sevilla 2126)
+    const L = [elegir(CAT.estilos.filter(e => !e.comodin)).id];
+    while (L.length < 3 && Math.random() < 0.85) { const ops = CAT.estilos.filter(e => !e.comodin && !L.includes(e.id) && habilitado(e.id, L)); if (!ops.length) break; L.push(elegir(ops).id); }
+    if (Math.random() < 0.25) L.push('futuro');
+    state.fachada.estilos = L;
+    const pick = cat => { const l = CAT.fachada.filter(e => e.cat === cat && L.includes(e.estilo)); return l.length ? elegir(l) : null; };
     const azar = p => Math.random() < p;
     const { w } = state.lot, H = state.fachada.alto = Math.max(snap(rnd(6, 9)), Math.ceil(baseNivel(state.niveles) + 1.5)), top = G - H, f = [];
-    const add = (d, x, y, s = 1, flip = false) => f.push({ id: uid(), el: d.id, x, y, s, flip });
-    const z = pick('zocalo'); add(z, 0, G - z.h);
-    if (azar(0.6)) { const c = pick('columna'), s = (H - z.h - 0.6) / c.h; add(c, 0.15, G - z.h - c.h * s, s); add(c, w - 0.15 - c.w * s, G - z.h - c.h * s, s); }
+    const add = (d, x, y, s = 1, flip = false) => d && f.push({ id: uid(), el: d.id, x, y, s, flip });
+    const z = pick('zocalo'), zh = z ? z.h : 0; if (z) add(z, 0, G - zh);
+    const c = azar(0.6) && pick('columna'); if (c) { const s = (H - zh - 0.6) / c.h; add(c, 0.15, G - zh - c.h * s, s); add(c, w - 0.15 - c.w * s, G - zh - c.h * s, s); }
     if (azar(0.5)) add(pick('moldura'), 0, top + H * 0.45);
     add(pick('moldura'), 0, top);
     const puerta = pick('puerta'), ven = pick('ventana'), ds = Math.min(1, (H - 1.5) / puerta.h);
@@ -1019,11 +1067,11 @@
       const vs = Math.min(1, (r.w - 0.6) / ven2.w, 2.2 / ven2.h), cy = G - baseNivel(1) - 1.6;
       add(ven2, r.x + r.w / 2 - ven2.w * vs / 2, Math.max(top + 0.3, cy - ven2.h * vs / 2), vs);
     }
-    if (azar(0.5)) { const o = pick('ornamento'); add(o, px - o.w / 2, G - puerta.h * ds - o.h - 0.25); }
-    const r = pick('remate'); add(r, w / 2 - r.w / 2, top - r.h + 0.05);
+    const o = azar(0.5) && pick('ornamento'); if (o) add(o, px - o.w / 2, G - puerta.h * ds - o.h - 0.25);
+    const r = pick('remate'); if (r) add(r, w / 2 - r.w / 2, top - r.h + 0.05);
     state.facade = f;
     state.fachada.pano = elegir(CAT.panos).id;
-    return [puerta, ven, r];
+    return L.map(EST);
   }
 
   function remix() {
@@ -1031,7 +1079,7 @@
     const pats = state.rooms.filter(r => r.patio).length, ambs = state.rooms.length - pats;
     ui.sel = null; ui.tool = null;
     setPaso('lamina'); commit(true);
-    toast(`Remix: ${pats} patio${pats === 1 ? '' : 's'}, ${ambs} ambientes · ${piezas.map(d => EST(d.estilo).nombre).join(' + ')}`);
+    toast(`Remix: ${pats} patio${pats === 1 ? '' : 's'}, ${ambs} ambientes · ${piezas.map(e => e.nombre).join(' + ')}`);
   }
 
   /* ---------- Archivos ---------- */
