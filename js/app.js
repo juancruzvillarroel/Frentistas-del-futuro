@@ -109,9 +109,12 @@
       <feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="3" seed="7" result="ruido"/>
       <feDisplacementMap in="SourceGraphic" in2="ruido" scale="0.9" xChannelSelector="R" yChannelSelector="G" result="borde"/>
       <feTurbulence type="fractalNoise" baseFrequency="0.3 2.2" numOctaves="2" seed="3" result="pincel"/>
-      <feColorMatrix in="pincel" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 -0.12" result="vetas"/>
+      <feColorMatrix in="pincel" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.1 -0.38" result="vetas"/>
       <feComposite in="vetas" in2="borde" operator="in" result="vetasDentro"/>
-      <feMerge><feMergeNode in="borde"/><feMergeNode in="vetasDentro"/></feMerge>
+      <feTurbulence type="fractalNoise" baseFrequency="0.22 1.6" numOctaves="2" seed="21" result="pincel2"/>
+      <feColorMatrix in="pincel2" type="matrix" values="0 0 0 0 0.27  0 0 0 0 0.45  0 0 0 0 0.62  0 0 0 1.2 -0.55" result="vetas2"/>
+      <feComposite in="vetas2" in2="borde" operator="in" result="vetasOscuras"/>
+      <feMerge><feMergeNode in="borde"/><feMergeNode in="vetasOscuras"/><feMergeNode in="vetasDentro"/></feMerge>
     </filter>
     <filter id="oleo-suave" x="-10%" y="-10%" width="120%" height="120%">
       <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="ruido"/>
@@ -441,8 +444,7 @@
     // Fondo: un cielo pintado al óleo y, detrás de la casa, la medianera del vecino con la huella de una casa demolida
     const rm = azarCon(semillaCasa('m')), altoMed = Math.min(hmax - 3, baseNivel(N) + 1.2 + rm() * 1.5);
     const a = d * (0.08 + rm() * 0.3), b = Math.min(d - 0.5, a + d * (0.25 + rm() * 0.2)), hh = Math.min(altoMed - 1.2, 3.5 + rm() * 2);
-    let s = `<g pointer-events="none"><rect x="-1.5" y="${G - hmax + 0.35}" width="${d + 3}" height="${hmax - 0.35}" fill="url(#cielo)" filter="url(#oleo)"/>`
-      + [[0.2, 0.25, 3.2, 0.7], [0.62, 0.15, 2.4, 0.5], [0.85, 0.32, 1.8, 0.4]].map(([fx, fy, rx, ry]) => `<ellipse cx="${-1 + (d + 2) * fx}" cy="${G - hmax + 0.4 + hmax * fy}" rx="${rx}" ry="${ry}" fill="#f4f1e8" opacity="0.55" filter="url(#oleo)"/>`).join('')
+    let s = `<g pointer-events="none">${cieloOleo(-0.35, G - hmax + 0.35, d + 0.35, hmax - 0.35 - altoMed + 0.6)}`   // solo por encima de la medianera
       + `<rect x="-0.35" y="${G - altoMed}" width="${d + 0.35}" height="${altoMed}" fill="url(#medianera)"/>`
       + `<path d="M${a} ${G} V${G - hh} L${(a + b) / 2} ${G - hh - 1.4} L${b} ${G - hh} V${G} Z" fill="#d8c6a2" opacity="0.7" filter="url(#oleo-suave)"/>`
       + [[0.12, 0.35, 2.2, 0.9], [0.55, 0.6, 1.6, 0.7], [0.8, 0.25, 2.6, 1.1]].map(([fx, fy, w2, h2]) => `<rect x="${d * fx}" y="${G - altoMed * fy - h2}" width="${w2}" height="${h2}" fill="#f5efe2" opacity="0.85" filter="url(#oleo-suave)"/>`).join('')
@@ -493,6 +495,13 @@
     return { vb: [-2, G - hmax, d + 4, hmax + 1.6], body: s };
   }
 
+  // Cielo pintado al óleo: una mancha celeste translúcida con pinceladas y nubes, en el rectángulo (x, y, w, h).
+  function cieloOleo(x, y, w, h) {
+    const nubes = [[0.18, 0.3, 0.11, 0.3], [0.58, 0.18, 0.08, 0.22], [0.85, 0.42, 0.06, 0.18]];
+    return `<g opacity="0.6"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#cielo)" filter="url(#oleo)"/>`
+      + nubes.map(([fx, fy, rx, ry]) => `<ellipse cx="${x + w * fx}" cy="${y + h * fy}" rx="${Math.max(0.8, w * rx)}" ry="${Math.max(0.25, h * ry * 0.5)}" fill="#f4f1e8" opacity="0.7" filter="url(#oleo)"/>`).join('') + '</g>';
+  }
+
   /* ---------- Fachada ---------- */
   function facBox(e) {
     const d = F(e.el);
@@ -501,7 +510,8 @@
 
   function drawFacade(live) {
     const { w } = state.lot, H = state.fachada.alto, top = G - H;
-    let s = `<rect x="-1.2" y="${top + 1}" width="1.2" height="${H - 1}" fill="url(#semi)"/><rect x="${w}" y="${top + 1.5}" width="1.2" height="${H - 1.5}" fill="url(#semi)"/>`;
+    let s = `<g pointer-events="none">${cieloOleo(-1.2, top - 3.3, w + 2.4, 5)}</g>`;   // cielo detrás, por encima de la casa y los vecinos
+    s += `<rect x="-1.2" y="${top + 1}" width="1.2" height="${H - 1}" fill="url(#semi)"/><rect x="${w}" y="${top + 1.5}" width="1.2" height="${H - 1.5}" fill="url(#semi)"/>`;
     s += `<rect x="0" y="${top}" width="${w}" height="${H}" fill="${pano().color}" stroke="${C.tinta}" stroke-width="1.6"/>`;
     for (const e of state.facade) {
       const d = F(e.el); if (!d) continue;
