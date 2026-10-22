@@ -105,16 +105,28 @@
     <pattern id="tierra" patternUnits="userSpaceOnUse" width="0.5" height="0.5"><rect width="0.5" height="0.5" fill="#e2d4b4"/><path d="M0 0.5 L0.5 0" stroke="#b9a882" stroke-width="0.6"/></pattern>
     <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#86abc8"/><stop offset="0.6" stop-color="#b3cddd"/><stop offset="1" stop-color="#d9e4e6"/></linearGradient>
     <pattern id="medianera" patternUnits="userSpaceOnUse" width="0.5" height="0.24"><rect width="0.5" height="0.24" fill="#ebe0ca"/><path d="M0 0.12 H0.5 M0.25 0 V0.12 M0 0.12 V0.24 M0.5 0.12 V0.24" stroke="#dacbae" stroke-width="0.5" fill="none"/></pattern>
-    <filter id="oleo" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="3" seed="7" result="ruido"/>
-      <feDisplacementMap in="SourceGraphic" in2="ruido" scale="0.9" xChannelSelector="R" yChannelSelector="G" result="borde"/>
+    <filter id="oleo" x="-25%" y="-40%" width="150%" height="180%">
+      <!-- bordes deshilachados y desenfocados: el cielo no tiene límite marcado -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.32" numOctaves="3" seed="7" result="ruido"/>
+      <feDisplacementMap in="SourceGraphic" in2="ruido" scale="2" xChannelSelector="R" yChannelSelector="G" result="borde"/>
+      <feGaussianBlur in="borde" stdDeviation="0.5" result="suave"/>
+      <!-- manchas: zonas más cargadas de pintura y zonas casi transparentes -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.22 0.7" numOctaves="2" seed="5" result="manchas"/>
+      <feColorMatrix in="manchas" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.9 -0.3" result="mascara"/>
+      <feComposite in="suave" in2="mascara" operator="in" result="irregular"/>
+      <!-- pinceladas horizontales claras y oscuras dentro de la mancha -->
       <feTurbulence type="fractalNoise" baseFrequency="0.3 2.2" numOctaves="2" seed="3" result="pincel"/>
-      <feColorMatrix in="pincel" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.1 -0.38" result="vetas"/>
-      <feComposite in="vetas" in2="borde" operator="in" result="vetasDentro"/>
+      <feColorMatrix in="pincel" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.3 -0.4" result="vetas"/>
+      <feComposite in="vetas" in2="irregular" operator="in" result="vetasClaras"/>
       <feTurbulence type="fractalNoise" baseFrequency="0.22 1.6" numOctaves="2" seed="21" result="pincel2"/>
-      <feColorMatrix in="pincel2" type="matrix" values="0 0 0 0 0.27  0 0 0 0 0.45  0 0 0 0 0.62  0 0 0 1.2 -0.55" result="vetas2"/>
-      <feComposite in="vetas2" in2="borde" operator="in" result="vetasOscuras"/>
-      <feMerge><feMergeNode in="borde"/><feMergeNode in="vetasOscuras"/><feMergeNode in="vetasDentro"/></feMerge>
+      <feColorMatrix in="pincel2" type="matrix" values="0 0 0 0 0.27  0 0 0 0 0.45  0 0 0 0 0.62  0 0 0 1.5 -0.55" result="vetas2"/>
+      <feComposite in="vetas2" in2="irregular" operator="in" result="vetasOscuras"/>
+      <feMerge><feMergeNode in="irregular"/><feMergeNode in="vetasOscuras"/><feMergeNode in="vetasClaras"/></feMerge>
+    </filter>
+    <filter id="nube" x="-40%" y="-80%" width="180%" height="260%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" seed="13" result="ruido"/>
+      <feDisplacementMap in="SourceGraphic" in2="ruido" scale="0.8" xChannelSelector="R" yChannelSelector="G" result="borde"/>
+      <feGaussianBlur in="borde" stdDeviation="0.3"/>
     </filter>
     <filter id="oleo-suave" x="-10%" y="-10%" width="120%" height="120%">
       <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="ruido"/>
@@ -498,8 +510,8 @@
   // Cielo pintado al óleo: una mancha celeste translúcida con pinceladas y nubes, en el rectángulo (x, y, w, h).
   function cieloOleo(x, y, w, h) {
     const nubes = [[0.18, 0.3, 0.11, 0.3], [0.58, 0.18, 0.08, 0.22], [0.85, 0.42, 0.06, 0.18]];
-    return `<g opacity="0.6"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#cielo)" filter="url(#oleo)"/>`
-      + nubes.map(([fx, fy, rx, ry]) => `<ellipse cx="${x + w * fx}" cy="${y + h * fy}" rx="${Math.max(0.8, w * rx)}" ry="${Math.max(0.25, h * ry * 0.5)}" fill="#f4f1e8" opacity="0.7" filter="url(#oleo)"/>`).join('') + '</g>';
+    return `<g opacity="0.55"><rect x="${x + 0.4}" y="${y + 0.3}" width="${Math.max(0, w - 0.8)}" height="${Math.max(0, h - 0.3)}" fill="url(#cielo)" filter="url(#oleo)"/>`
+      + nubes.map(([fx, fy, rx, ry]) => `<ellipse cx="${x + w * fx}" cy="${y + h * fy}" rx="${Math.max(0.8, w * rx)}" ry="${Math.max(0.25, h * ry * 0.5)}" fill="#f4f1e8" opacity="0.6" filter="url(#nube)"/>`).join('') + '</g>';
   }
 
   /* ---------- Fachada ---------- */
