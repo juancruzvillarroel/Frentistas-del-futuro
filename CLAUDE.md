@@ -1,11 +1,11 @@
-# Frentistas del Futuro · contexto del proyecto
+# Máquina de composición y ornamentación (ex «Frentistas del Futuro») · contexto del proyecto
 
 Trabajo final de facultad (arquitectura), hecho en equipo. Es un juego web.
 
 ## La idea
 - **Obra de partida:** la Casa Planes, del estudio de Amero, en Caballito (Buenos Aires). Está construida sobre una casa chorizo preexistente y conserva su fachada original. Eso la vincula con la casa chorizo, la casa de patios, la inmigración y el trabajo de los frentistas (los yeseros que modelaban las fachadas).
 - **Lente teórico:** la *retromanía* de Simon Reynolds. Con acceso infinito y permanente al archivo del pasado, la cultura queda atrapada en un loop: proyecta hacia adelante mirando hacia atrás y no logra crear algo nuevo.
-- **Ficción futura:** la casa transformada se reubica en **Sevilla, 2126**, por su genealogía compartida: la casa andaluza de patio central, la tradición de los frentistas y la inmigración.
+- **Ficción futura:** la casa transformada se reubica en **Sevilla, 2157**, por su genealogía compartida: la casa andaluza de patio central, la tradición de los frentistas y la inmigración.
 - **Los frentistas del futuro** ya no inventan fachadas: las arman recortando fragmentos de un catálogo de todas las épocas. El juego hace evidente la retromanía: solo podés recombinar el pasado, y la ficha final siempre dice "0 piezas nuevas".
 
 ## Versión 2 (rama `v2-retro`, octubre 2026): se rehízo desde cero

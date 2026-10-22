@@ -19,7 +19,7 @@ button { font: inherit; color: inherit; }
 .topbar { display: flex; align-items: center; gap: 14px 24px; flex-wrap: wrap; padding: 14px var(--gutter); background: var(--cal); border-bottom: 3px solid var(--tinta); position: relative; }
 .topbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: -13px; height: 10px; border-bottom: 2px solid var(--tinta);
   background: conic-gradient(var(--azul) 25%, var(--cal) 0 50%, var(--azul) 0 75%, var(--cal) 0) 0 0 / 10px 10px; }
-.logo h1 { margin: 0; font-family: var(--sc); font-weight: normal; font-size: 34px; line-height: 1; letter-spacing: .02em; }
+.logo h1 { margin: 0 0 4px; font-family: var(--sc); font-weight: normal; font-size: 30px; line-height: 1.02; letter-spacing: .02em; }
 .logo small { font-size: 18px; text-transform: uppercase; letter-spacing: .12em; color: var(--almagra); }
 .cursor { animation: blink 1s steps(2) infinite; font-weight: normal; }
 @keyframes blink { 50% { opacity: 0; } }

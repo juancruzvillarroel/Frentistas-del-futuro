@@ -234,7 +234,7 @@ window.CATALOGO = (() => {
   /* ---------- Piezas de fachada, por estilo ----------
      afines / contraste: tabla «Combinaciones de fachadas · Casa Planes» del equipo
      (afinidad formal, proporción, ornamento y materialidad). Al elegir un estilo, solo quedan
-     habilitados los de afinidad alta. Sevilla 2126 es el archivo, no un estilo: combina con todo. */
+     habilitados los de afinidad alta. Sevilla 2157 es el archivo, no un estilo: combina con todo. */
   const estilos = [
     { id: 'clasico', nombre: 'Clásico grecorromano', epoca: 's. V a. C. – s. IV', afines: ['renacimiento', 'barroco', 'italianizante', 'academicismo'], contraste: ['racionalismo', 'brutalismo'] },
     { id: 'mudejar', nombre: 'Mudéjar y andalusí', epoca: 's. XII – XV', afines: ['gotico', 'barroco', 'colonial', 'regionalismo', 'neocolonial'], contraste: ['brutalismo'] },
@@ -252,7 +252,7 @@ window.CATALOGO = (() => {
     { id: 'pintoresquista', nombre: 'Chalet pintoresquista', epoca: '1920 – 1950', afines: ['italianizante'], contraste: ['racionalismo', 'brutalismo'] },
     { id: 'brutalismo', nombre: 'Brutalismo', epoca: '1955 – 1975', afines: ['racionalismo', 'contemporaneo'], contraste: ['clasico', 'mudejar', 'renacimiento', 'barroco', 'academicismo'] },
     { id: 'contemporaneo', nombre: 'Contemporáneo', epoca: '1990 – 2030', afines: ['racionalismo', 'brutalismo'], contraste: [] },
-    { id: 'futuro', nombre: 'Sevilla 2126', epoca: 'archivo digital · combina con todo', comodin: true, afines: [], contraste: [] }
+    { id: 'futuro', nombre: 'Sevilla 2157', epoca: 'archivo digital · combina con todo', comodin: true, afines: [], contraste: [] }
   ];
 
   const pz = (estilo, cat, id, nombre, epoca, anio, w, h, desc, draw) => ({ estilo, cat, id, nombre, epoca, anio, w, h, desc, draw });
@@ -448,7 +448,7 @@ window.CATALOGO = (() => {
     pz('deco', 'remate', 'remate-deco', 'Coronamiento con mástil', 'Art déco, 1935', 1936, 2.2, 2.2, 'Torre escalonada con mástil y bandera.',
       (w, h) => P(`M0 ${h} V1.4 H0.3 V1 H0.6 V0.7 H${w - 0.6} V1 H${w - 0.3} V1.4 H${w} V${h} Z`, C.deco, 1.3) + rep(4, i => L(0.75 + i * (w - 1.5) / 3, 0.85, 0.75 + i * (w - 1.5) / 3, h - 0.1, 0.6))
         + L(w / 2, 0.7, w / 2, 0, 1.4) + P(`M${w / 2} 0.02 H${w / 2 + 0.45} L${w / 2 + 0.35} 0.14 L${w / 2 + 0.45} 0.26 H${w / 2}`, C.almagra, 0.8)),
-    pz('deco', 'ornamento', 'neon', 'Letrero de neón', 'Neón, 1955', 1955, 2.4, 0.7, 'Dice lo que todos sienten en 2126.',
+    pz('deco', 'ornamento', 'neon', 'Letrero de neón', 'Neón, 1955', 1955, 2.4, 0.7, 'Dice lo que todos sienten en 2157.',
       (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" rx="0.08" ${st('#1c1712', 1.2)}/><text x="${w / 2}" y="${h * 0.7}" font-size="${h * 0.6}" text-anchor="middle" font-family="VT323, monospace" fill="#ffd2c4" stroke="#ff5a3c" stroke-width="2.4" paint-order="stroke">NOSTALGIA</text>`),
 
     /* Racionalismo */
@@ -492,8 +492,8 @@ window.CATALOGO = (() => {
       (w, h) => R(0, 0, w, h - 0.08, C.cal, 1.2) + O(w * 0.64, (h - 0.08) / 2, 0.19, 'none', 1) + rep(4, i => { const a = i * PI / 2; return L(w * 0.64, (h - 0.08) / 2, w * 0.64 + 0.17 * cos(a), (h - 0.08) / 2 + 0.17 * sin(a), 0.8); })
         + rep(5, i => L(0.08, 0.08 + i * 0.08, 0.3, 0.08 + i * 0.08, 0.6)) + L(0.1, h - 0.08, 0.1, h, 1) + L(w - 0.1, h - 0.08, w - 0.1, h, 1)),
 
-    /* Sevilla 2126 */
-    pz('futuro', 'puerta', 'puerta-futura', 'Portal de acceso', 'Sevilla, 2126', 2126, 2, 3.2, 'Lo único "nuevo" del catálogo. Aunque parece salido de una película de 1979.',
+    /* Sevilla 2157 */
+    pz('futuro', 'puerta', 'puerta-futura', 'Portal de acceso', 'Sevilla, 2157', 2157, 2, 3.2, 'Lo único "nuevo" del catálogo. Aunque parece salido de una película de 1979.',
       (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" rx="${w / 2}" ${st(C.sombra, 1.6)}/><rect x="0.2" y="0.2" width="${w - 0.4}" height="${h - 0.2}" rx="${w / 2 - 0.2}" ${st('none', 1.2, C.albero)} stroke-dasharray="4 3"/>`
         + [[1.6, 0.1], [1.75, 0.25], [1.6, 0.4], [1.9, 0.55], [0.1, 2.6], [-0.05, 2.75], [0.15, 2.9]].map(([x, y]) => R(x, y, 0.14, 0.14, C.azul, 0.6)).join('') + L(0, h, w, h, 1.6)),
     pz('futuro', 'ventana', 'ventana-glitch', 'Ventana glitch', 'Archivo digital, 2099', 2099, 1.4, 1.6, 'Una ventana descargada tantas veces que perdió píxeles.',
@@ -502,14 +502,14 @@ window.CATALOGO = (() => {
     pz('futuro', 'columna', 'columna-holo', 'Columna holográfica', 'Sevilla, 2120', 2120, 0.7, 4, 'Una dórica proyectada. No sostiene nada, solo recuerda.',
       (w, h) => `<rect x="0.08" y="0" width="${w - 0.16}" height="${h}" ${st('none', 1.2, C.azul)} stroke-dasharray="5 3"/>` + rep(16, i => L(0.08, 0.12 + i * (h - 0.2) / 15, w - 0.08, 0.12 + i * (h - 0.2) / 15, 0.6, C.azul))
         + `<rect x="0.2" y="0.3" width="${w - 0.4}" height="${h - 0.6}" fill="${C.albero}" opacity="0.25"/>` + R(0, 0, w, 0.12, 'none', 1) + R(0, h - 0.12, w, 0.12, 'none', 1)),
-    pz('futuro', 'moldura', 'cornisa-led', 'Cornisa de luz', 'Sevilla, 2126', 2125, 3, 0.3, 'Una línea de luz que dibuja la cornisa que ya no está.', cornisa([['led', 0.3]], 'sombra')),
+    pz('futuro', 'moldura', 'cornisa-led', 'Cornisa de luz', 'Sevilla, 2157', 2125, 3, 0.3, 'Una línea de luz que dibuja la cornisa que ya no está.', cornisa([['led', 0.3]], 'sombra')),
     pz('futuro', 'zocalo', 'zocalo-pantallas', 'Zócalo de pantallas', 'Sevilla, 2120', 2121, 3, 1, 'Pantallas que muestran azulejos de otras épocas.', zocalo('led')),
     pz('futuro', 'remate', 'puerto-drones', 'Puerto de drones', 'Sevilla, 2110', 2110, 2.4, 1.2, 'Donde antes había una espadaña.',
       (w, h) => R(w / 2 - 0.06, 0.42, 0.12, h - 0.42, C.zinc, 1) + R(0.1, 0.3, w - 0.2, 0.12, C.sombra, 1) + rep(5, i => O(0.25 + i * (w - 0.5) / 4, 0.36, 0.03, C.led, 0.5, C.led))
         + L(w / 2 - 0.25, 0.05, w / 2 + 0.25, 0.2, 1.2) + L(w / 2 - 0.25, 0.2, w / 2 + 0.25, 0.05, 1.2) + [[-0.25, 0.05], [0.25, 0.05], [-0.25, 0.2], [0.25, 0.2]].map(([dx, y]) => E(w / 2 + dx, y, 0.1, 0.03, 'none', 0.8)).join('')),
-    pz('futuro', 'ornamento', 'camara', 'Cámara de vigilancia', 'Sevilla, 2126', 2126, 0.7, 0.5, 'El archivo también te mira a vos.',
+    pz('futuro', 'ornamento', 'camara', 'Cámara de vigilancia', 'Sevilla, 2157', 2157, 0.7, 0.5, 'El archivo también te mira a vos.',
       (w, h) => L(0, 0.1, 0.25, 0.1, 1.4) + P('M0.2 0.02 H0.6 L0.68 0.3 H0.28 Z', C.cal, 1.1) + O(0.62, 0.3, 0.06, C.sombra, 0.8) + O(0.3, 0.08, 0.025, C.almagra, 0.5)),
-    pz('futuro', 'ornamento', 'holo-azulejo', 'Azulejo holográfico', 'Sevilla, 2126', 2124, 1.2, 1.2, 'Un panel de Triana generado por una máquina que nunca vio Triana.',
+    pz('futuro', 'ornamento', 'holo-azulejo', 'Azulejo holográfico', 'Sevilla, 2157', 2124, 1.2, 1.2, 'Un panel de Triana generado por una máquina que nunca vio Triana.',
       (w, h) => `<rect x="0" y="0" width="${w}" height="${h}" ${st('none', 1.2, C.azul)} stroke-dasharray="4 2"/>` + rep(9, i => { const x = (i % 3) * w / 3, y = Math.floor(i / 3) * h / 3, off = i === 4 ? 0.06 : 0;
         return i === 7 ? '' : R(x + 0.05 + off, y + 0.05, w / 3 - 0.1, h / 3 - 0.1, 'none', 0.8, C.azul) + O(x + w / 6 + off, y + h / 6, 0.1, i % 2 ? C.albero : C.azulClaro, 0.6, C.azul); }) + rep(8, i => L(0, i * h / 8, w, i * h / 8, 0.3, C.led)))
   ];
@@ -772,7 +772,7 @@ window.CATALOGO = (() => {
         + brazo(-0.17, -1.33, -0.23, -1.08, -0.25, -0.88, C.cal, piel[0]) + brazo(0.17, -1.33, 0.28, -1.15, 0.24, -1.0, C.cal, piel[0]) + P('M0.18 -1.06 l0.08 -0.06 l0.08 0.06 l0.08 -0.06 v0.12 l-0.08 0.06 l-0.08 -0.06 l-0.08 0.06 Z', C.cal, 0.6)
         + cara(-1.54, piel[0]) + R(-0.085, -1.565, 0.17, 0.04, C.sombra, 0.6) + P('M-0.16 -1.6 Q-0.12 -1.6 -0.1 -1.72 L0.1 -1.72 Q0.12 -1.6 0.16 -1.6 Z', C.albero, 0.8),
       planta: () => R(-0.18, 0.08, 0.36, 0.14, C.verde, 1) + arriba(C.cal, C.albero) + O(0, 0, 0.16, 'none', 0.8, C.albero) },
-    { id: 'futurista', nombre: 'Habitante de 2126', epoca: 'Sevilla, 2126',
+    { id: 'futurista', nombre: 'Habitante de 2157', epoca: 'Sevilla, 2157',
       lado: () => `<ellipse cx="0" cy="0.02" rx="0.32" ry="0.05" fill="${C.led}" opacity="0.45"/>` + E(0, 0.01, 0.24, 0.03, '#123a36', 0.8, C.led)
         + pantalon(-0.85, C.azul) + R(-0.15, -0.22, 0.12, 0.17, C.zinc, 0.8) + R(0.03, -0.22, 0.12, 0.17, C.zinc, 0.8)
         + P('M-0.17 -1.4 L-0.16 -0.82 L0.16 -0.82 L0.17 -1.4 Z', C.azul, 1) + L(0, -1.38, 0, -0.84, 1.4, C.led) + L(-0.16, -0.95, 0.16, -0.95, 1.6, C.led) + E(-0.17, -1.38, 0.06, 0.03, C.zinc, 0.8) + E(0.17, -1.38, 0.06, 0.03, C.zinc, 0.8)

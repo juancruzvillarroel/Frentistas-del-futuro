@@ -1,4 +1,4 @@
-/* Frentistas del Futuro · calle Feria, Sevilla 2126.
+/* Máquina de composición y ornamentación · calle Feria, Sevilla 2157.
    El juego avanza en pasos: 1 planta y patios · 2 fachada · 3 techos y corte · 4 lámina.
    Acá están el estado de la casa, el dibujo de cada vista, la ficha, el aviso de ayuda y el guardado. */
 
@@ -82,7 +82,7 @@
 
   /* ---------- Afinidad entre estilos (tabla «Combinaciones de fachadas» del equipo) ----------
      Al tocar un estilo en el archivo queda elegido; después solo se habilitan los que tienen afinidad alta
-     con TODOS los elegidos. Sevilla 2126 es el archivo: comodín, siempre habilitado y no restringe. */
+     con TODOS los elegidos. Sevilla 2157 es el archivo: comodín, siempre habilitado y no restringe. */
   const elegidos = () => state.fachada.estilos;
   const habilitado = (id, lista = elegidos()) => lista.includes(id) || EST(id).comodin || lista.filter(e => !EST(e).comodin).every(e => EST(e).afines.includes(id));
   const sinAfinidad = id => elegidos().filter(e => !EST(e).comodin && !EST(e).afines.includes(id));
@@ -103,6 +103,20 @@
     <pattern id="suelo-cal" patternUnits="userSpaceOnUse" width="0.5" height="0.5"><rect width="0.5" height="0.5" fill="${C.cal}"/><path d="M0 0 H0.5 M0 0 V0.5" stroke="#cdbf9f" stroke-width="0.6" fill="none"/></pattern>
     <pattern id="semi" patternUnits="userSpaceOnUse" width="0.4" height="0.4"><rect width="0.4" height="0.4" fill="#f1e8d4"/><path d="M0 0.4 L0.4 0" stroke="#bfae8a" stroke-width="0.6"/></pattern>
     <pattern id="tierra" patternUnits="userSpaceOnUse" width="0.5" height="0.5"><rect width="0.5" height="0.5" fill="#e2d4b4"/><path d="M0 0.5 L0.5 0" stroke="#b9a882" stroke-width="0.6"/></pattern>
+    <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#86abc8"/><stop offset="0.6" stop-color="#b3cddd"/><stop offset="1" stop-color="#d9e4e6"/></linearGradient>
+    <pattern id="medianera" patternUnits="userSpaceOnUse" width="0.5" height="0.24"><rect width="0.5" height="0.24" fill="#ebe0ca"/><path d="M0 0.12 H0.5 M0.25 0 V0.12 M0 0.12 V0.24 M0.5 0.12 V0.24" stroke="#dacbae" stroke-width="0.5" fill="none"/></pattern>
+    <filter id="oleo" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="3" seed="7" result="ruido"/>
+      <feDisplacementMap in="SourceGraphic" in2="ruido" scale="0.9" xChannelSelector="R" yChannelSelector="G" result="borde"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.3 2.2" numOctaves="2" seed="3" result="pincel"/>
+      <feColorMatrix in="pincel" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 -0.12" result="vetas"/>
+      <feComposite in="vetas" in2="borde" operator="in" result="vetasDentro"/>
+      <feMerge><feMergeNode in="borde"/><feMergeNode in="vetasDentro"/></feMerge>
+    </filter>
+    <filter id="oleo-suave" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="ruido"/>
+      <feDisplacementMap in="SourceGraphic" in2="ruido" scale="0.35" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
     <pattern id="vacio" patternUnits="userSpaceOnUse" width="0.6" height="0.6"><rect width="0.6" height="0.6" fill="#e9eef2"/><path d="M0 0.6 L0.6 0 M0 0 L0.6 0.6" stroke="#9db4cf" stroke-width="0.6"/></pattern>
   </defs>`;
   const STYLE = '<style>*{vector-effect:non-scaling-stroke}</style>';
@@ -423,8 +437,17 @@
     const { d } = state.lot, sx = state.sx, H = state.fachada.alto, N = state.niveles;
     // Lo que corta la línea A–A en cada nivel (ambientes, patios y pasillos automáticos; no las llegadas de escalera).
     const corta = n => espacios(n).todos.filter(r => !String(r.id).startsWith('lleg-') && sx > r.x && sx < r.x + r.w);
-    const hmax = Math.max(H, baseNivel(N) + 2.5) + 1.5;
-    let s = `<rect x="-2" y="${G}" width="${d + 4}" height="1.2" fill="url(#tierra)"/><line x1="-2" y1="${G}" x2="${d + 2}" y2="${G}" stroke="${C.tinta}" stroke-width="2"/>`;
+    const hmax = Math.max(H, baseNivel(N) + 2.5) + 4;   // aire arriba para el cielo
+    // Fondo: un cielo pintado al óleo y, detrás de la casa, la medianera del vecino con la huella de una casa demolida
+    const rm = azarCon(semillaCasa('m')), altoMed = Math.min(hmax - 3, baseNivel(N) + 1.2 + rm() * 1.5);
+    const a = d * (0.08 + rm() * 0.3), b = Math.min(d - 0.5, a + d * (0.25 + rm() * 0.2)), hh = Math.min(altoMed - 1.2, 3.5 + rm() * 2);
+    let s = `<g pointer-events="none"><rect x="-1.5" y="${G - hmax + 0.35}" width="${d + 3}" height="${hmax - 0.35}" fill="url(#cielo)" filter="url(#oleo)"/>`
+      + [[0.2, 0.25, 3.2, 0.7], [0.62, 0.15, 2.4, 0.5], [0.85, 0.32, 1.8, 0.4]].map(([fx, fy, rx, ry]) => `<ellipse cx="${-1 + (d + 2) * fx}" cy="${G - hmax + 0.4 + hmax * fy}" rx="${rx}" ry="${ry}" fill="#f4f1e8" opacity="0.55" filter="url(#oleo)"/>`).join('')
+      + `<rect x="-0.35" y="${G - altoMed}" width="${d + 0.35}" height="${altoMed}" fill="url(#medianera)"/>`
+      + `<path d="M${a} ${G} V${G - hh} L${(a + b) / 2} ${G - hh - 1.4} L${b} ${G - hh} V${G} Z" fill="#d8c6a2" opacity="0.7" filter="url(#oleo-suave)"/>`
+      + [[0.12, 0.35, 2.2, 0.9], [0.55, 0.6, 1.6, 0.7], [0.8, 0.25, 2.6, 1.1]].map(([fx, fy, w2, h2]) => `<rect x="${d * fx}" y="${G - altoMed * fy - h2}" width="${w2}" height="${h2}" fill="#f5efe2" opacity="0.85" filter="url(#oleo-suave)"/>`).join('')
+      + `<rect x="-0.45" y="${G - altoMed - 0.12}" width="${d + 0.55}" height="0.12" fill="#c7b28c" stroke="${C.tinta}" stroke-width="0.6"/></g>`;
+    s += `<rect x="-2" y="${G}" width="${d + 4}" height="1.2" fill="url(#tierra)"/><line x1="-2" y1="${G}" x2="${d + 2}" y2="${G}" stroke="${C.tinta}" stroke-width="2"/>`;
     let alguno = false;
     const lugares = [];   // dónde pueden aparecer habitantes: { s0, Lg, suelo }
     for (let n = 0; n < N; n++) {
@@ -489,7 +512,7 @@
       s += `<g data-fac="${e.id}" ${live ? 'style="cursor:move"' : ''}>${inner}${live ? `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="transparent"/>` : ''}</g>`;
     }
     s += `<rect x="-1.2" y="${G}" width="${w + 2.4}" height="0.25" fill="${C.piedra}" stroke="${C.tinta}" stroke-width="1"/>`;
-    s += txt(w / 2, G + 1, 'CALLE FERIA · SEVILLA 2126', 0.42, { font: 'mono', extra: 'letter-spacing="0.1"' });
+    s += txt(w / 2, G + 1, 'CALLE FERIA · SEVILLA 2157', 0.42, { font: 'mono', extra: 'letter-spacing="0.1"' });
     if (live && ui.sel && ui.sel.kind === 'fac') {
       const e = facEl(ui.sel.id);
       if (e) { const b = facBox(e); s += `<rect x="${b.x - 0.08}" y="${b.y - 0.08}" width="${b.w + 0.16}" height="${b.h + 0.16}" fill="none" stroke="${C.azul}" stroke-width="2.5" stroke-dasharray="6 3" pointer-events="none"/>`; }
@@ -529,8 +552,8 @@
     s += `<rect x="${rx}" y="40" width="350" height="920" fill="${C.cal}" stroke="${C.tinta}" stroke-width="1.5"/>`;
     for (let i = 0; i < 25; i++) for (let j = 0; j < 2; j++) s += `<rect x="${rx + i * 14}" y="${40 + j * 14}" width="14" height="14" fill="${(i + j) % 2 ? C.azul : C.cal}"/>`;
     let y = 120;
-    s += t(cx, y, 'Frentistas del Futuro', 34, 'sc', 'text-anchor="middle"'); y += 30;
-    s += t(cx, y, 'calle Feria · Sevilla · 2126', 20, 'mono', 'text-anchor="middle"'); y += 50;
+    s += t(cx, y - 14, 'Máquina de composición', 30, 'sc', 'text-anchor="middle"') + t(cx, y + 20, 'y ornamentación', 30, 'sc', 'text-anchor="middle"'); y += 54;
+    s += t(cx, y, 'calle Feria · Sevilla · 2157', 20, 'mono', 'text-anchor="middle"'); y += 50;
     for (const l of wrap(state.nombre || 'Casa sin nombre', 20)) { s += t(rx + 20, y, l, 30, 'serif', 'font-style="italic"'); y += 34; }
     y += 6; s += t(rx + 20, y, 'FRENTISTA: ' + (state.frentista || '—').toUpperCase(), 19); y += 34;
     const cub = state.rooms.filter(r => !r.patio).reduce((a, r) => a + r.w * r.h, 0), pats = state.rooms.filter(r => r.patio);
@@ -754,7 +777,7 @@
       else if (v === 'fachada') h = `<div class="ftit">La fachada</div><p class="desc">El frente sobre calle Feria. Las molduras y los zócalos ocupan todo el ancho; el resto se ubica donde quieras.</p>`
         + num('fachada.alto', state.fachada.alto, 4, 12, 0.5, 'Altura de fachada (m)')
         + `<label>Color del paño</label><div class="swatches">${CAT.panos.map(p => `<button class="sw ${p.id === state.fachada.pano ? 'on' : ''}" data-act="pano" data-id="${p.id}" title="${p.nombre}" style="background:${p.color}"></button>`).join('')}</div>`;
-      else h = `<div class="ftit">El lote</div><div class="fep">Calle Feria · Sevilla · 2126</div>`
+      else h = `<div class="ftit">El lote</div><div class="fep">Calle Feria · Sevilla · 2157</div>`
         + `<p class="desc">La casa de Caballito aterrizó en Sevilla. Los frentistas del futuro no inventan: eligen en el archivo y recombinan.</p>`
         + text('frentista', state.frentista, 'Frentista (quién diseña)')
         + `<div class="row">${num('lot.w', state.lot.w, 6, 20, 0.5, 'Frente (m)')}${num('lot.d', state.lot.d, 12, 50, 0.5, 'Fondo (m)')}</div>`;
@@ -1041,7 +1064,7 @@
 
   // La fachada responde a la planta: la puerta va frente al zaguán y las ventanas frente a los otros ambientes del frente.
   function remixFachada(frente) {
-    // Estilos con afinidad alta entre sí, como si alguien los eligiera en el archivo (a veces suma Sevilla 2126)
+    // Estilos con afinidad alta entre sí, como si alguien los eligiera en el archivo (a veces suma Sevilla 2157)
     const L = [elegir(CAT.estilos.filter(e => !e.comodin)).id];
     while (L.length < 3 && Math.random() < 0.85) { const ops = CAT.estilos.filter(e => !e.comodin && !L.includes(e.id) && habilitado(e.id, L)); if (!ops.length) break; L.push(elegir(ops).id); }
     if (Math.random() < 0.25) L.push('futuro');
