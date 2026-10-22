@@ -440,13 +440,15 @@
         } else {
           const h = r.alto, top = suelo - h, cubierto = arriba.some(o => o.y < r.y + r.h - 1e-6 && r.y < o.y + o.h - 1e-6);
           s += `<rect x="${s0}" y="${top}" width="${Lg}" height="${h}" fill="#f6efdf"/>`;
+          const mob = !r.auto && A(r.tipo) && A(r.tipo).corte;   // mobiliario visto de costado
+          if (mob) s += `<g transform="translate(${s0} ${suelo})" pointer-events="none">${mob(Lg, h)}</g>`;
           if (n > 0) s += `<rect x="${s0 - 0.15}" y="${suelo}" width="${Lg + 0.3}" height="0.3" fill="${C.tinta}"/>`;
           s += cubierto ? `<rect x="${s0 - 0.15}" y="${top - 0.3}" width="${Lg + 0.3}" height="0.3" fill="${C.tinta}"/>` : `<g transform="translate(${s0} ${top})">${T(r.techo).draw(Lg)}</g>`;
           if (r.tipo === 'galeria') s += `<rect x="${s0}" y="${top}" width="0.12" height="${h}" fill="${C.tinta}"/><rect x="${s0 + Lg - 0.12}" y="${top}" width="0.12" height="${h}" fill="${C.tinta}"/>`;
           else s += `<rect x="${s0 - 0.15}" y="${top}" width="0.3" height="${h}" fill="${C.tinta}"/><rect x="${s0 + Lg - 0.15}" y="${top}" width="0.3" height="${h}" fill="${C.tinta}"/>`;
           if (r.tipo === 'escalera') { const sub = altoNivel(n), k = 10; s += `<path d="M${s0} ${suelo}${Array.from({ length: k }, (_, i) => ` V${suelo - sub * (i + 1) / k} H${s0 + Lg * (i + 1) / k}`).join('')}" fill="none" stroke="${C.tinta}" stroke-width="1.4"/>`; }
-          s += txt(s0 + Lg / 2, top + h * 0.45, r.nombre, clamp(Lg / 6, 0.3, 0.5), { extra: 'font-style="italic"' });
-          if (!cubierto && !r.auto) s += txt(s0 + Lg / 2, top + h * 0.45 + 0.5, T(r.techo).nombre, clamp(Lg / 8, 0.25, 0.38), { font: 'mono', fill: C.almagra });
+          s += txt(s0 + Lg / 2, top + h * 0.45, r.nombre, clamp(Lg / 6, 0.3, 0.5), { extra: `font-style="italic" ${halo}` });
+          if (!cubierto && !r.auto) s += txt(s0 + Lg / 2, top + h * 0.45 + 0.5, T(r.techo).nombre, clamp(Lg / 8, 0.25, 0.38), { font: 'mono', fill: C.almagra, extra: halo });
           if (r.tipo !== 'escalera') lugares.push({ s0, Lg, suelo });
         }
         if (sel) s += `<rect x="${s0}" y="${suelo - altoNivel(n)}" width="${Lg}" height="${altoNivel(n)}" fill="none" stroke="${C.azul}" stroke-width="2.5" stroke-dasharray="6 3" pointer-events="none"/>`;

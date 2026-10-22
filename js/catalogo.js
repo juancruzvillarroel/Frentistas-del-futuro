@@ -568,6 +568,51 @@ window.CATALOGO = (() => {
     terraza: { box: [2.6, 1.8], draw: () => M(0.1, 0.1, 0.65, 1.5, 0.15, '#e8dcc2') + M(0.9, 0.1, 0.65, 1.5, 0.15, '#e8dcc2') + O(2.05, 0.6, 0.35, C.cal, 0.9) + O(2.35, 1.45, 0.25, C.verde, 0.8) + O(1.85, 1.5, 0.18, C.verde, 0.8) },
     galeria: { box: [3, 1.2], repetir: true, draw: () => M(0.3, 0.1, 1.4, 0.38, 0.04) + O(2.2, 0.35, 0.2, C.verde, 0.8) + O(2.6, 0.8, 0.17, C.verde, 0.8) }
   };
+  // Mobiliario en el corte: vista de costado, piso en y=0 (lo negativo es hacia arriba).
+  // L = largo del ambiente en el corte, h = altura. Lo alto va contra las paredes para no tapar el nombre del centro.
+  const pata = (x, y) => L(x, y, x, 0, 1.2);
+  const silla2 = (x, mira = 1) => R(x, -0.47, 0.42, 0.05, C.madera, 0.9) + L(mira > 0 ? x : x + 0.42, -0.47, mira > 0 ? x : x + 0.42, -1, 1.6, C.madera) + pata(x + 0.04, -0.42) + pata(x + 0.38, -0.42);
+  const lampara = (x, h) => L(x, -h, x, -h + 0.7, 0.8) + P(`M${x - 0.22} ${-h + 0.95} L${x - 0.12} ${-h + 0.7} L${x + 0.12} ${-h + 0.7} L${x + 0.22} ${-h + 0.95} Z`, C.albero, 0.9);
+  const cuadro = (x, y, w = 0.7, hh = 0.5) => R(x, y, w, hh, C.albero, 1) + R(x + 0.06, y + 0.06, w - 0.12, hh - 0.12, C.azulClaro, 0.6) + P(`M${x + 0.08} ${y + hh - 0.08} L${x + w * 0.4} ${y + hh * 0.45} L${x + w - 0.08} ${y + hh - 0.08} Z`, C.verde, 0.5);
+  const planta2 = x => P(`M${x - 0.15} -0.35 H${x + 0.15} L${x + 0.11} 0 H${x - 0.11} Z`, C.almagra, 0.9) + O(x - 0.08, -0.6, 0.15, C.verde, 0.7) + O(x + 0.1, -0.7, 0.17, C.verde, 0.7) + O(x, -0.85, 0.15, C.verde, 0.7);
+  const placard = x => R(x, -2.05, 0.7, 2.03, C.madera, 1) + L(x + 0.35, -2.05, x + 0.35, -0.02, 0.8) + O(x + 0.3, -1.05, 0.02, C.albero, 0.5) + O(x + 0.4, -1.05, 0.02, C.albero, 0.5);
+  const cortes = {
+    living: (Lg, h) => { const c = Lg / 2; let s = '';
+      if (Lg > 3.2) s += cuadro(0.35, -2.6) + planta2(0.45);
+      if (Lg > 3.6) s += L(Lg - 0.45, 0, Lg - 0.45, -1.5, 1.2) + P(`M${Lg - 0.68} -1.5 L${Lg - 0.58} -1.8 L${Lg - 0.32} -1.8 L${Lg - 0.22} -1.5 Z`, C.albero, 0.9) + E(Lg - 0.45, 0, 0.18, 0.025, C.tinta, 0.6);
+      return s + R(c - 0.95, -0.9, 1.9, 0.45, C.cal, 1) + R(c - 1.05, -0.65, 0.2, 0.45, C.cal, 1) + R(c + 0.85, -0.65, 0.2, 0.45, C.cal, 1) + R(c - 0.85, -0.45, 1.7, 0.25, C.cal, 1)
+        + L(c, -0.45, c, -0.2, 0.6) + pata(c - 0.9, -0.2) + pata(c + 0.9, -0.2) + R(c - 0.35, -0.42, 0.7, 0.04, C.madera, 0.8) + pata(c - 0.3, -0.38) + pata(c + 0.3, -0.38); },
+    comedor: (Lg, h) => { const c = Lg / 2, w = Math.min(1.8, Lg - 1.4);
+      return (w > 0.6 ? silla2(c - w / 2 - 0.5, 1) + silla2(c + w / 2 + 0.08, -1) : '') + R(c - Math.max(w, 0.6) / 2, -0.8, Math.max(w, 0.6), 0.05, C.madera, 1) + pata(c - Math.max(w, 0.6) / 2 + 0.06, -0.75) + pata(c + Math.max(w, 0.6) / 2 - 0.06, -0.75)
+        + O(c - 0.2, -0.86, 0.05, C.cal, 0.6) + P(`M${c + 0.1} -0.95 h0.1 l-0.02 0.13 h-0.06 Z`, C.vidrio, 0.6) + lampara(c, h); },
+    cocina: (Lg, h) => { const w = Math.min(Lg - (Lg > 3 ? 1.1 : 0.3), 2.6); let s = R(0.15, -0.9, w, 0.86, C.cal, 1) + R(0.12, -0.95, w + 0.06, 0.05, C.piedra, 1)
+        + rep(Math.floor(w / 0.6), i => R(0.2 + i * 0.6, -0.8, 0.52, 0.7, 'none', 0.6) + O(0.4 + i * 0.6, -0.72, 0.015, C.tinta, 0.3)) + R(0.15, -2.25, w, 0.6, C.cal, 1)
+        + rep(Math.floor(w / 0.6), i => R(0.2 + i * 0.6, -2.2, 0.52, 0.5, 'none', 0.6)) + R(0.4, -1.05, 0.4, 0.1, C.sombra, 0.8) + P('M1.1 -0.95 v-0.2 h0.18', 'none', 1);
+      if (Lg > 3) s += R(Lg - 0.85, -1.8, 0.7, 1.78, C.cal, 1) + L(Lg - 0.85, -1.15, Lg - 0.15, -1.15, 0.8) + L(Lg - 0.78, -1.6, Lg - 0.78, -1.3, 1.4) + L(Lg - 0.78, -1.05, Lg - 0.78, -0.8, 1.4);
+      return s; },
+    dormitorio: (Lg, h) => { const c = Lg > 3.2 ? (Lg - 0.9) / 2 : Lg / 2;
+      return R(c - 1, -0.45, 2, 0.27, C.madera, 1) + R(c - 1, -0.62, 2, 0.18, C.cal, 1) + P(`M${c - 0.35} -0.62 Q${c + 0.3} -0.7 ${c + 1} -0.62 V-0.45 H${c - 0.35} Z`, '#d9c7a6', 0.8)
+        + E(c - 0.75, -0.7, 0.2, 0.08, C.cal, 0.8) + R(c - 1.08, -1.15, 0.08, 1.15, C.madera, 1) + R(c + 0.98, -0.75, 0.06, 0.75, C.madera, 1)
+        + (c - 1.6 > 0.05 ? R(c - 1.6, -0.55, 0.45, 0.53, C.madera, 0.9) + L(c - 1.6, -0.3, c - 1.15, -0.3, 0.6) + L(c - 1.38, -0.55, c - 1.38, -0.85, 0.8) + P(`M${c - 1.5} -0.85 L${c - 1.45} -1.05 L${c - 1.3} -1.05 L${c - 1.25} -0.85 Z`, C.albero, 0.8) : '')
+        + (Lg > 3.2 ? placard(Lg - 0.85) : ''); },
+    bano: (Lg, h) => { const c = Lg / 2; let s = P('M0.2 -0.42 H0.62 Q0.6 -0.2 0.45 -0.18 V0 H0.32 V-0.18 Q0.22 -0.25 0.2 -0.42 Z', C.cal, 0.9) + R(0.18, -0.85, 0.12, 0.43, C.cal, 0.9);
+      s += R(c - 0.04, -0.82, 0.08, 0.82, C.cal, 0.9) + P(`M${c - 0.28} -0.9 H${c + 0.28} L${c + 0.22} -0.78 H${c - 0.22} Z`, C.cal, 0.9) + R(c - 0.25, -1.75, 0.5, 0.65, C.vidrio, 0.9) + L(c - 0.15, -1.6, c, -1.45, 0.8, C.cal);
+      if (Lg > 2.6) s += R(Lg - 1.75, -0.55, 1.6, 0.55, C.cal, 1) + P(`M${Lg - 0.3} -2.1 h-0.15 v0.08`, 'none', 1.2) + rep(4, i => L(Lg - 0.48 + i * 0.03, -1.95, Lg - 0.6 + i * 0.05, -1.5, 0.5, C.azul));
+      return s; },
+    estudio: (Lg, h) => { const c = Lg > 2.6 ? (Lg + 1) / 2 : Lg / 2;
+      return (Lg > 2.6 ? R(0.15, -2.05, 0.9, 2.03, C.madera, 1) + rep(4, i => L(0.15, -0.45 - i * 0.42, 1.05, -0.45 - i * 0.42, 0.8)) + rep(14, i => R(0.2 + (i % 7) * 0.12, -0.83 - Math.floor(i / 7) * 0.84, 0.09, 0.35 - (i % 3) * 0.05, [C.almagra, C.azul, C.albero, C.verde][i % 4], 0.5)) : '')
+        + R(c - 0.6, -0.76, 1.2, 0.05, C.madera, 1) + pata(c - 0.55, -0.71) + pata(c + 0.55, -0.71) + P(`M${c - 0.15} -0.76 L${c - 0.1} -0.95 H${c + 0.2} L${c + 0.15} -0.76 Z`, C.sombra, 0.7)
+        + L(c + 0.45, -0.76, c + 0.38, -1.15, 0.8) + P(`M${c + 0.3} -1.12 L${c + 0.48} -1.22 L${c + 0.52} -1.1 Z`, C.albero, 0.7) + silla2(c - 0.2, -1); },
+    taller: (Lg, h) => { const c = Lg / 2;
+      return R(c - 0.9, -2.1, 1.8, 0.8, '#e2d4b4', 0.9) + rep(5, i => L(c - 0.7 + i * 0.35, -1.95, c - 0.7 + i * 0.35, -1.55, 1.2)) + O(c + 0.6, -1.85, 0.08, 'none', 1)
+        + R(c - 1, -0.95, 2, 0.08, C.madera, 1) + pata(c - 0.95, -0.87) + pata(c + 0.95, -0.87) + R(c - 0.85, -0.3, 1.7, 0.04, C.madera, 0.7)
+        + R(c - 0.8, -1.12, 0.22, 0.17, C.zinc, 0.8) + R(c + 0.2, -1.05, 0.4, 0.1, C.madera, 0.6) + O(c + 1.25, -0.6, 0.15, 'none', 1) + pata(c + 1.25, -0.6); },
+    zaguan: (Lg, h) => R(0, -1.1, Lg, 0.18, C.azulClaro, 0.8) + rep(Lg / 0.2, i => L(i * 0.2, -1.1, i * 0.2, -0.92, 0.4))
+      + (Lg > 2 ? R(Lg / 2 - 0.5, -0.45, 1, 0.06, C.madera, 0.9) + pata(Lg / 2 - 0.45, -0.39) + pata(Lg / 2 + 0.45, -0.39) : '') + L(Lg - 0.4, -1.75, Lg - 0.4, -1.65, 1.4) + E(Lg - 0.4, -1.62, 0.12, 0.03, C.sombra, 0.8),
+    galeria: (Lg, h) => rep(Math.max(1, Math.floor(Lg / 4)), i => { const x = (i + 0.5) * Lg / Math.max(1, Math.floor(Lg / 4)); return planta2(x - 0.6) + P(`M${x} 0 Q${x + 0.35} -0.15 ${x + 0.7} 0`, 'none', 1.2, C.madera) + R(x + 0.1, -0.45, 0.5, 0.05, C.madera, 0.8) + L(x + 0.6, -0.45, x + 0.7, -1, 1.4, C.madera) + L(x + 0.2, -0.45, x + 0.15, -0.08, 1, C.madera); }),
+    terraza: (Lg, h) => ''
+  };
+
   const ambientes = [
     { id: 'zaguan', nombre: 'Zaguán', w: 2, h: 5, color: '#dccaa0', techo: 'boveda-catalana', desc: 'Pasillo de entrada entre la calle y el patio.' },
     { id: 'living', nombre: 'Living', w: 4.5, h: 5, color: '#ead4a8', techo: 'losa', desc: 'La sala principal, sobre la calle.' },
@@ -581,7 +626,7 @@ window.CATALOGO = (() => {
     { id: 'pasillo', nombre: 'Pasillo', w: 1.2, h: 6, color: '#efe4cc', techo: 'losa', desc: 'Circulación cubierta que conecta los ambientes.' },
     { id: 'escalera', nombre: 'Escalera', w: 1.5, h: 3.5, color: '#e2d6bd', techo: 'losa', desc: 'Sube al nivel de arriba: ahí aparece su llegada.' },
     { id: 'terraza', nombre: 'Terraza', w: 4, h: 4, color: '#efe9da', techo: 'azotea', desc: 'Espacio descubierto en los pisos altos, mirando al patio.' }
-  ].map(a => ({ ...a, equipo: equipos[a.id] }));
+  ].map(a => ({ ...a, equipo: equipos[a.id], corte: cortes[a.id] }));
   const patios = [
     { id: 'patio-principal', nombre: 'Patio principal', w: 5, h: 5, suelo: 'azulejo', funcion: 'Encuentro', desc: 'El centro de la casa andaluza y de la casa chorizo.' },
     { id: 'patio-naranjos', nombre: 'Patio de naranjos', w: 6, h: 6, suelo: 'albero', funcion: 'Sombra y descanso', desc: 'Sombra sevillana en hileras.' },
@@ -628,56 +673,110 @@ window.CATALOGO = (() => {
   ];
 
   /* ---------- Habitantes de todas las épocas ----------
-     lado(): vista de costado para el corte, con los pies en y=0 (lo negativo es hacia arriba, en metros).
+     lado(): vista de frente para el corte, con los pies en y=0 (lo negativo es hacia arriba, en metros).
      planta(): vista desde arriba para la planta, centrada en 0,0. */
   const piel = ['#efd2b5', '#d9ab84', '#b07d57', '#8a5a3b'];
-  const cab = (y, p, r = 0.11) => O(0, y, r, p, 1);
-  const brazos = (y, c = C.tinta) => L(-0.17, y, -0.24, y + 0.5, 1.4, c) + L(0.17, y, 0.24, y + 0.5, 1.4, c);
-  const piernas = (y, c = C.tinta) => L(-0.07, y, -0.09, 0, 1.6, c) + L(0.07, y, 0.09, 0, 1.6, c);
-  const arriba = (ropa, cabeza, extra = '') => E(0, 0, 0.26, 0.15, ropa, 1) + extra + O(0, 0, 0.11, cabeza, 1);
+  // Partes del cuerpo: miembros con contorno, cara con gesto, manos y zapatos
+  const miembro = (x1, y1, x2, y2, c) => L(x1, y1, x2, y2, 5.5) + L(x1, y1, x2, y2, 3.5, c);
+  const brazo = (x1, y1, x2, y2, x3, y3, c, p) => miembro(x1, y1, x2, y2, c) + miembro(x2, y2, x3, y3, c) + O(x3, y3, 0.035, p, 0.8);
+  const cara = (y, p) => O(0, y, 0.11, p, 1) + O(-0.038, y - 0.005, 0.012, C.tinta, 0.3) + O(0.038, y - 0.005, 0.012, C.tinta, 0.3)
+    + L(0, y + 0.005, 0.012, y + 0.035, 0.5) + P(`M-0.03 ${y + 0.055} Q0 ${y + 0.075} 0.03 ${y + 0.055}`, 'none', 0.7);
+  const zapatos = (c = C.tinta, s = 0.08) => E(-s, -0.025, 0.07, 0.03, c, 0.8) + E(s, -0.025, 0.07, 0.03, c, 0.8);
+  const pantalon = (y0, c, campana = 0) => P(`M-0.14 ${y0} L${-0.15 - campana} -0.05 L-0.02 -0.05 L0 ${y0 + 0.3} L0.02 -0.05 L${0.15 + campana} -0.05 L0.14 ${y0} Z`, c, 1);
+  const piernas = (y0, p) => miembro(-0.07, y0, -0.08, -0.05, p) + miembro(0.07, y0, 0.08, -0.05, p);
+  const arriba = (ropa, cabeza, extra = '') => E(-0.27, 0.06, 0.07, 0.1, ropa, 0.8) + E(0.27, 0.06, 0.07, 0.1, ropa, 0.8) + E(0, 0, 0.26, 0.15, ropa, 1) + extra + O(0, 0, 0.11, cabeza, 1);
   const personas = [
     { id: 'romano', nombre: 'Ciudadano romano', epoca: 'Roma, s. I',
-      lado: () => piernas(-0.3) + P('M-0.22 -0.25 L-0.18 -1.32 Q0 -1.44 0.18 -1.32 L0.22 -0.25 Z', C.cal, 1) + L(-0.18, -1.3, 0.2, -0.55, 1, C.almagra) + brazos(-1.28) + cab(-1.58, piel[1]) + P('M-0.11 -1.66 Q0 -1.74 0.11 -1.66', 'none', 1.4, C.verde),
-      planta: () => arriba(C.cal, piel[1], L(-0.24, -0.06, 0.2, 0.08, 1.2, C.almagra)) },
+      lado: () => piernas(-0.3, piel[1]) + zapatos(C.madera) + L(-0.13, -0.12, -0.03, -0.12, 0.7, C.madera) + L(0.03, -0.12, 0.13, -0.12, 0.7, C.madera)
+        + P('M-0.22 -0.28 L-0.19 -1.34 Q0 -1.46 0.19 -1.34 L0.22 -0.28 Q0 -0.22 -0.22 -0.28 Z', C.cal, 1)
+        + P('M-0.19 -1.32 Q0.02 -0.95 0.21 -0.52', 'none', 2.2, C.almagra) + P('M-0.1 -1 Q0 -0.7 0.08 -0.38 M-0.17 -0.8 Q-0.1 -0.55 -0.05 -0.3', 'none', 0.6)
+        + brazo(-0.18, -1.3, -0.24, -1.02, -0.26, -0.8, C.cal, piel[1]) + brazo(0.18, -1.3, 0.28, -1.08, 0.17, -0.98, C.cal, piel[1]) + R(0.1, -1.02, 0.22, 0.07, C.piedra, 0.8)
+        + cara(-1.58, piel[1]) + P('M-0.11 -1.6 Q-0.1 -1.71 0 -1.71 Q0.1 -1.71 0.11 -1.6 Q0 -1.66 -0.11 -1.6 Z', C.sombra, 0.8)
+        + rep(5, i => E(-0.1 + i * 0.05, -1.68 - Math.sin(i / 4 * Math.PI) * 0.03, 0.026, 0.012, C.verde, 0.5)),
+      planta: () => arriba(C.cal, C.sombra, L(-0.24, -0.06, 0.2, 0.08, 1.4, C.almagra)) },
     { id: 'monje', nombre: 'Monje', epoca: 'Medioevo, s. XIII',
-      lado: () => P('M-0.25 0 L-0.17 -1.36 Q-0.17 -1.82 0 -1.82 Q0.17 -1.82 0.17 -1.36 L0.25 0 Z', C.madera, 1) + O(0.04, -1.58, 0.075, piel[0], 0.8) + L(0, -1.0, 0, -0.95, 3, C.albero),
-      planta: () => E(0, 0, 0.27, 0.17, C.madera, 1) + O(0, 0, 0.13, C.madera, 1) },
+      lado: () => zapatos(C.madera) + P('M-0.26 -0.02 L-0.18 -1.36 Q-0.18 -1.84 0 -1.84 Q0.18 -1.84 0.18 -1.36 L0.26 -0.02 Z', C.madera, 1)
+        + P('M-0.1 -1.48 Q-0.1 -1.72 0 -1.72 Q0.1 -1.72 0.1 -1.48', '#4e3520', 1) + O(0, -1.56, 0.085, piel[0], 0.8) + O(-0.03, -1.57, 0.011, C.tinta, 0.3) + O(0.03, -1.57, 0.011, C.tinta, 0.3)
+        + P('M-0.18 -1.25 L-0.07 -0.95 M0.18 -1.25 L0.07 -0.95', 'none', 1) + O(-0.03, -0.93, 0.035, piel[0], 0.8) + O(0.03, -0.93, 0.035, piel[0], 0.8)
+        + L(-0.21, -0.85, 0.21, -0.85, 1.8, C.albero) + L(0.06, -0.85, 0.08, -0.5, 1.2, C.albero) + O(0.08, -0.48, 0.02, C.albero, 0.5)
+        + L(0, -1.38, 0, -1.22, 1, C.albero) + L(-0.04, -1.33, 0.04, -1.33, 1, C.albero),
+      planta: () => E(-0.24, 0.08, 0.07, 0.1, C.madera, 0.8) + E(0.24, 0.08, 0.07, 0.1, C.madera, 0.8) + E(0, 0, 0.27, 0.17, C.madera, 1) + O(0, 0, 0.13, '#4e3520', 1) },
     { id: 'dama', nombre: 'Dama renacentista', epoca: 'Renacimiento, s. XVI',
-      lado: () => P('M-0.42 0 Q-0.32 -0.6 -0.12 -0.98 L0.12 -0.98 Q0.32 -0.6 0.42 0 Z', C.almagra, 1) + R(-0.12, -1.38, 0.24, 0.42, C.almagra, 1) + L(-0.12, -1.3, -0.26, -0.95, 1.4) + L(0.12, -1.3, 0.26, -0.95, 1.4)
-        + E(0, -1.42, 0.17, 0.05, C.cal, 1) + cab(-1.57, piel[0]) + P('M-0.11 -1.6 Q0 -1.75 0.11 -1.6', 'none', 2, C.sombra),
-      planta: () => O(0, 0, 0.4, C.almagra, 1) + E(0, 0, 0.2, 0.12, C.cal, 0.8) + O(0, 0, 0.1, C.sombra, 1) },
+      lado: () => P('M-0.42 0 Q-0.32 -0.6 -0.12 -0.98 L0.12 -0.98 Q0.32 -0.6 0.42 0 Z', C.almagra, 1) + P('M-0.08 -0.98 L-0.2 0 L0.2 0 L0.08 -0.98 Z', C.albero, 0.8)
+        + rep(12, i => { const f = Math.floor(i / 4), k = 1 - f * 0.28; return P(`M${(-0.3 + (i % 4) * 0.2) * k - 0.03} ${-0.18 - f * 0.25} l0.03 -0.04 l0.03 0.04 l-0.03 0.04 Z`, C.albero, 0.4); }) + rep(4, i => L(-0.14 + i * 0.09, -0.85, -0.17 + i * 0.11, -0.05, 0.5))
+        + P('M-0.13 -1.38 L-0.1 -0.95 L0 -0.86 L0.1 -0.95 L0.13 -1.38 Z', C.almagra, 1) + P('M-0.06 -1.36 L0 -0.93 L0.06 -1.36 Z', C.albero, 0.7)
+        + E(-0.17, -1.3, 0.07, 0.09, C.almagra, 1) + E(0.17, -1.3, 0.07, 0.09, C.almagra, 1) + brazo(-0.18, -1.22, -0.2, -1.02, -0.07, -0.93, C.almagra, piel[0]) + brazo(0.18, -1.22, 0.2, -1.02, 0.07, -0.93, C.almagra, piel[0])
+        + rep(7, i => O(-0.15 + i * 0.05, -1.42, 0.03, C.cal, 0.6)) + cara(-1.57, piel[0]) + P('M-0.115 -1.56 Q-0.11 -1.7 0 -1.7 Q0.11 -1.7 0.115 -1.56 Q0 -1.63 -0.115 -1.56 Z', C.sombra, 0.8)
+        + O(0, -1.73, 0.05, C.sombra, 0.8) + rep(5, i => O(-0.08 + i * 0.04, -1.665, 0.01, C.cal, 0.3)),
+      planta: () => O(0, 0, 0.4, C.almagra, 1) + O(0, 0, 0.32, 'none', 0.5) + E(0, 0, 0.2, 0.12, C.cal, 0.8) + O(0, 0, 0.1, C.sombra, 1) + O(0, -0.08, 0.04, C.sombra, 0.6) },
     { id: 'sevillana', nombre: 'Sevillana con peineta', epoca: 'Sevilla, s. XIX',
-      lado: () => P('M-0.38 0 Q-0.2 -0.35 -0.14 -0.95 L0.14 -0.95 Q0.2 -0.35 0.38 0 Z', '#c0392b', 1) + [0.12, 0.25].map(y => P(`M${-0.36 + y * 0.3} ${-y} Q0 ${-y + 0.08} ${0.36 - y * 0.3} ${-y}`, 'none', 0.8)).join('')
-        + rep(5, i => O(-0.12 + i * 0.06, -0.55 + (i % 2) * 0.12, 0.018, C.cal, 0.3)) + R(-0.12, -1.36, 0.24, 0.42, '#c0392b', 1) + L(0.12, -1.3, 0.28, -1.5, 1.4) + P('M0.28 -1.5 l0.12 -0.12 l0.04 0.16 Z', C.sombra, 0.8)
-        + L(-0.12, -1.3, -0.22, -0.95, 1.4) + cab(-1.55, piel[1]) + P('M-0.1 -1.66 Q0 -1.86 0.1 -1.66', C.madera, 1) + O(0.11, -1.55, 0.03, C.almagra, 0.5),
-      planta: () => O(0, 0, 0.33, '#c0392b', 1) + O(0, 0, 0.27, 'none', 0.6) + O(0, 0, 0.1, C.sombra, 1) + E(0, -0.07, 0.1, 0.04, C.madera, 0.8) },
+      lado: () => zapatos(C.sombra, 0.06) + P('M-0.33 -0.3 Q-0.42 -0.08 -0.44 0 Q-0.22 0.03 0 -0.01 Q0.22 0.03 0.44 0 Q0.42 -0.08 0.33 -0.3 Z', '#c0392b', 1)
+        + P('M-0.26 -0.55 Q-0.32 -0.35 -0.33 -0.29 Q-0.16 -0.24 0 -0.29 Q0.16 -0.24 0.33 -0.29 Q0.32 -0.35 0.26 -0.55 Z', '#c0392b', 1)
+        + P('M-0.15 -0.95 Q-0.2 -0.62 -0.26 -0.55 L0.26 -0.55 Q0.2 -0.62 0.15 -0.95 Z', '#c0392b', 1)
+        + rep(16, i => O(-0.3 + (i % 6) * 0.12 + (Math.floor(i / 6) % 2) * 0.06, -0.12 - Math.floor(i / 6) * 0.28, 0.02, C.cal, 0.3))
+        + P('M-0.13 -1.38 L-0.14 -0.95 L0.14 -0.95 L0.13 -1.38 Z', '#c0392b', 1) + P('M-0.13 -1.36 Q0 -1.2 0.13 -1.36', 'none', 1.4, C.albero)
+        + brazo(-0.14, -1.3, -0.25, -1.08, -0.14, -0.96, '#c0392b', piel[1]) + brazo(0.14, -1.3, 0.25, -1.45, 0.3, -1.62, '#c0392b', piel[1])
+        + P('M0.3 -1.62 L0.18 -1.82 A0.24 0.24 0 0 1 0.44 -1.76 Z', C.sombra, 0.8) + rep(4, i => L(0.3, -1.62, 0.2 + i * 0.07, -1.8 + i * 0.012, 0.5, C.albero))
+        + cara(-1.55, piel[1]) + P('M-0.115 -1.53 Q-0.11 -1.68 0 -1.68 Q0.11 -1.68 0.115 -1.53 Q0 -1.62 -0.115 -1.53 Z', C.sombra, 0.8) + O(0, -1.7, 0.05, C.sombra, 0.8)
+        + P('M-0.1 -1.72 Q0 -1.92 0.1 -1.72 Z', C.madera, 0.8) + rep(4, i => L(-0.06 + i * 0.04, -1.73, -0.06 + i * 0.04, -1.8, 0.5, C.cal))
+        + O(0.1, -1.65, 0.035, C.almagra, 0.6) + O(-0.11, -1.52, 0.015, C.albero, 0.4) + O(0.11, -1.52, 0.015, C.albero, 0.4),
+      planta: () => O(0, 0, 0.36, '#c0392b', 1) + O(0, 0, 0.29, 'none', 0.6) + O(0, 0, 0.22, 'none', 0.6) + E(0, 0, 0.18, 0.1, '#c0392b', 0.8) + O(0, 0, 0.1, C.sombra, 1) + E(0, -0.07, 0.1, 0.04, C.madera, 0.8) + O(0.08, 0.04, 0.03, C.almagra, 0.5) },
     { id: 'frentista', nombre: 'Frentista italiano', epoca: 'Buenos Aires, 1910',
-      lado: () => piernas(-0.85, C.madera) + R(-0.16, -1.38, 0.32, 0.6, '#9db0a3', 1) + L(-0.16, -1.3, -0.3, -0.9, 1.6) + L(0.16, -1.3, 0.32, -1.1, 1.6) + P('M0.32 -1.1 h0.18 l-0.04 0.06 h-0.14 Z', C.zinc, 0.8)
-        + cab(-1.54, piel[1]) + P('M-0.12 -1.6 Q0 -1.72 0.12 -1.6 L0.2 -1.6', C.sombra, 1),
-      planta: () => arriba('#9db0a3', piel[1], L(0.2, 0, 0.42, 0, 1.4, C.zinc)) + P('M-0.1 0 A0.1 0.1 0 0 1 0.1 0 L0.18 0.02', C.sombra, 0.8) },
+      lado: () => pantalon(-0.85, '#7b8a8f') + zapatos(C.sombra) + R(-0.17, -1.4, 0.34, 0.3, C.cal, 1) + R(-0.13, -1.2, 0.26, 0.38, '#7b8a8f', 1) + R(-0.07, -1.12, 0.14, 0.1, 'none', 0.6)
+        + L(-0.1, -1.2, -0.12, -1.39, 1.6, '#7b8a8f') + L(0.1, -1.2, 0.12, -1.39, 1.6, '#7b8a8f') + O(-0.1, -1.18, 0.015, C.albero, 0.4) + O(0.1, -1.18, 0.015, C.albero, 0.4)
+        + brazo(-0.17, -1.35, -0.25, -1.08, -0.27, -0.88, C.cal, piel[1]) + P('M-0.38 -0.86 L-0.16 -0.86 L-0.19 -0.6 L-0.35 -0.6 Z', C.zinc, 1) + P('M-0.38 -0.86 Q-0.27 -1 -0.16 -0.86', 'none', 0.8) + E(-0.27, -0.87, 0.1, 0.025, C.cal, 0.6)
+        + brazo(0.17, -1.35, 0.28, -1.12, 0.36, -1.2, C.cal, piel[1]) + P('M0.36 -1.2 L0.42 -1.24 L0.56 -1.2 L0.5 -1.16 Z', C.zinc, 0.8)
+        + cara(-1.55, piel[1]) + P('M-0.055 -1.505 Q0 -1.485 0.055 -1.505', 'none', 2.2, C.sombra) + P('M-0.12 -1.6 Q0 -1.74 0.12 -1.6 Z', '#5b5146', 0.8) + L(0.08, -1.6, 0.21, -1.585, 2.2, '#5b5146'),
+      planta: () => arriba('#9db0a3', '#5b5146', L(0.2, 0, 0.42, 0, 1.4, C.zinc)) + L(0.06, -0.02, 0.18, 0.03, 2, '#5b5146') + O(-0.35, 0.12, 0.1, C.zinc, 0.8) },
     { id: 'flapper', nombre: 'Joven de los años veinte', epoca: 'París → Buenos Aires, 1925',
-      lado: () => piernas(-0.5, C.sombra) + P('M-0.17 -0.5 L-0.13 -1.36 L0.13 -1.36 L0.17 -0.5 Z', C.albero, 1) + rep(4, i => L(-0.16, -0.5 - i * 0.06, 0.16, -0.5 - i * 0.06, 0.5)) + brazos(-1.3)
-        + cab(-1.53, piel[0]) + P('M-0.13 -1.53 Q-0.12 -1.72 0 -1.72 Q0.12 -1.72 0.13 -1.53 Z', C.sombra, 1),
-      planta: () => arriba(C.albero, C.sombra) },
+      lado: () => piernas(-0.5, '#e5c9ad') + E(-0.08, -0.025, 0.06, 0.025, C.sombra, 0.8) + E(0.08, -0.025, 0.06, 0.025, C.sombra, 0.8) + L(-0.08, -0.05, -0.08, -0.1, 0.8) + L(0.08, -0.05, 0.08, -0.1, 0.8)
+        + P('M-0.15 -1.38 L-0.17 -0.86 L0.17 -0.86 L0.15 -1.38 Z', C.albero, 1) + R(-0.19, -0.86, 0.38, 0.3, C.albero, 1) + rep(10, i => L(-0.18 + i * 0.04, -0.62, -0.18 + i * 0.04, -0.5, 0.7, '#a8803a'))
+        + L(-0.17, -0.86, 0.17, -0.86, 2.2, C.almagra) + P('M-0.06 -1.38 Q0 -0.95 0.06 -1.38', 'none', 0.5) + rep(7, i => O(-0.05 + i * 0.016 + (i > 3 ? 0 : 0), -1.33 + (i < 4 ? i * 0.09 : (6 - i) * 0.09), 0.012, C.cal, 0.3))
+        + brazo(-0.15, -1.33, -0.21, -1.08, -0.23, -0.88, piel[0], piel[0]) + brazo(0.15, -1.33, 0.27, -1.18, 0.2, -1.05, piel[0], piel[0]) + L(0.2, -1.05, 0.34, -1.16, 1, C.sombra)
+        + cara(-1.53, piel[0]) + P('M-0.12 -1.48 L-0.13 -1.56 Q-0.12 -1.72 0 -1.72 Q0.12 -1.72 0.13 -1.56 L0.12 -1.48 Q0.08 -1.55 0 -1.6 Q-0.08 -1.55 -0.12 -1.48 Z', C.sombra, 0.8)
+        + P('M-0.14 -1.59 Q-0.13 -1.76 0 -1.76 Q0.13 -1.76 0.14 -1.59 Z', '#7a2e3a', 0.8) + L(-0.14, -1.61, 0.14, -1.61, 1.6, C.albero),
+      planta: () => arriba(C.albero, '#7a2e3a') + O(0, 0, 0.13, 'none', 1, C.albero) },
     { id: 'senor', nombre: 'Señor de traje y sombrero', epoca: 'Sevilla, 1955',
-      lado: () => piernas(-0.85, C.sombra) + R(-0.18, -1.4, 0.36, 0.62, '#4b4f5c', 1) + P('M0 -1.4 l-0.05 0.25 l0.05 0.08 l0.05 -0.08 Z', C.almagra, 0.5) + brazos(-1.32, '#4b4f5c')
-        + cab(-1.55, piel[2]) + R(-0.16, -1.66, 0.32, 0.03, C.sombra, 1) + R(-0.1, -1.78, 0.2, 0.12, C.sombra, 1),
-      planta: () => arriba('#4b4f5c', C.sombra) + O(0, 0, 0.17, 'none', 1.2) },
+      lado: () => pantalon(-0.85, '#4b4f5c') + zapatos(C.sombra) + P('M-0.18 -1.4 L-0.19 -0.8 L0.19 -0.8 L0.18 -1.4 Z', '#4b4f5c', 1) + P('M-0.06 -1.4 L0 -1.15 L0.06 -1.4 Z', C.cal, 0.8)
+        + P('M0 -1.38 l-0.025 0.2 l0.025 0.06 l0.025 -0.06 Z', C.almagra, 0.5) + L(-0.06, -1.4, -0.1, -1.12, 0.8) + L(0.06, -1.4, 0.1, -1.12, 0.8)
+        + O(0, -1.02, 0.013, C.tinta, 0.3) + O(0, -0.92, 0.013, C.tinta, 0.3) + P('M0.08 -1.27 l0.03 -0.04 l0.03 0.04 Z', C.cal, 0.5)
+        + brazo(-0.18, -1.36, -0.22, -1.08, -0.14, -0.96, '#4b4f5c', piel[2]) + R(-0.32, -1.18, 0.12, 0.26, C.cal, 0.8) + rep(4, i => L(-0.3, -1.12 + i * 0.05, -0.22, -1.12 + i * 0.05, 0.4))
+        + brazo(0.18, -1.36, 0.23, -1.08, 0.24, -0.86, '#4b4f5c', piel[2])
+        + cara(-1.56, piel[2]) + P('M-0.05 -1.51 Q0 -1.49 0.05 -1.51', 'none', 1.8, C.sombra) + R(-0.17, -1.66, 0.34, 0.035, C.sombra, 1)
+        + P('M-0.1 -1.66 L-0.09 -1.8 Q0 -1.84 0.09 -1.8 L0.1 -1.66 Z', C.sombra, 1) + L(-0.1, -1.69, 0.1, -1.69, 1.6, C.almagra),
+      planta: () => arriba('#4b4f5c', C.sombra) + O(0, 0, 0.17, 'none', 1.4) + R(-0.4, -0.05, 0.12, 0.2, C.cal, 0.6) },
     { id: 'hippie', nombre: 'Viajera de los setenta', epoca: 'Ibiza, 1972',
-      lado: () => P('M-0.12 -0.85 L-0.22 0 M0.12 -0.85 L0.22 0', 'none', 3, C.azul) + P('M-0.17 -0.8 L-0.15 -1.38 L0.15 -1.38 L0.17 -0.8 Z', C.naranja, 1) + brazos(-1.3)
-        + cab(-1.55, piel[1]) + P('M-0.12 -1.5 Q-0.14 -1.72 0 -1.72 Q0.14 -1.72 0.12 -1.5 L0.15 -1.3 M-0.12 -1.5 L-0.15 -1.3', C.madera, 1) + L(-0.13, -1.62, 0.13, -1.62, 1.2, C.verde),
-      planta: () => arriba(C.naranja, C.madera) + O(0, 0, 0.115, 'none', 1, C.verde) },
+      lado: () => pantalon(-0.85, C.azul, 0.07) + zapatos(C.madera, 0.1) + L(-0.08, -0.8, -0.1, -0.08, 0.5, C.azulClaro) + L(0.08, -0.8, 0.1, -0.08, 0.5, C.azulClaro)
+        + P('M-0.17 -1.38 L-0.2 -0.75 L0.2 -0.75 L0.17 -1.38 Z', C.naranja, 1) + rep(9, i => O(-0.13 + (i % 3) * 0.13, -1.25 + Math.floor(i / 3) * 0.17, 0.025, i % 2 ? C.cal : C.albero, 0.4))
+        + L(-0.12, -1.38, 0.24, -0.95, 1, C.madera) + R(0.17, -0.98, 0.13, 0.15, C.madera, 0.8) + rep(4, i => L(0.18 + i * 0.03, -0.83, 0.18 + i * 0.03, -0.76, 0.5))
+        + brazo(-0.17, -1.33, -0.24, -1.08, -0.26, -0.86, C.naranja, piel[1]) + L(-0.28, -0.92, -0.23, -0.92, 1.6, C.verde) + brazo(0.17, -1.33, 0.25, -1.1, 0.27, -0.9, C.naranja, piel[1])
+        + O(0, -1.3, 0.035, 'none', 0.8) + L(0, -1.335, 0, -1.265, 0.6)
+        + P('M-0.125 -1.4 Q-0.14 -1.72 0 -1.72 Q0.14 -1.72 0.125 -1.4 L0.16 -1.25 L0.1 -1.25 L0.09 -1.5 Q0 -1.6 -0.09 -1.5 L-0.1 -1.25 L-0.16 -1.25 Z', C.madera, 0.8)
+        + cara(-1.55, piel[1]) + L(-0.125, -1.63, 0.125, -1.63, 1.6, C.verde),
+      planta: () => arriba(C.naranja, C.madera) + O(0, 0, 0.115, 'none', 1.2, C.verde) + R(0.2, 0.05, 0.12, 0.1, C.madera, 0.6) },
     { id: 'nino', nombre: 'Niño con pelota', epoca: 'Cualquier época',
-      lado: () => piernas(-0.45) + R(-0.12, -0.92, 0.24, 0.48, C.azulClaro, 1) + brazos(-0.86) + cab(-1.04, piel[0], 0.1) + O(0.36, -0.1, 0.1, C.albero, 1),
-      planta: () => E(0, 0, 0.19, 0.11, C.azulClaro, 1) + O(0, 0, 0.09, C.madera, 1) + O(0.32, 0.18, 0.09, C.albero, 0.8) },
+      lado: () => piernas(-0.38, piel[0]) + E(-0.08, -0.03, 0.065, 0.035, C.cal, 0.8) + E(0.08, -0.03, 0.065, 0.035, C.cal, 0.8)
+        + R(-0.12, -0.5, 0.24, 0.14, C.azul, 1) + R(-0.13, -0.9, 0.26, 0.42, C.azulClaro, 1) + L(-0.13, -0.74, 0.13, -0.74, 2, C.almagra)
+        + brazo(-0.13, -0.86, -0.19, -0.66, -0.2, -0.54, C.azulClaro, piel[0]) + brazo(0.13, -0.86, 0.2, -0.7, 0.26, -0.62, C.azulClaro, piel[0])
+        + cara(-1.02, piel[0]) + P('M-0.11 -1.05 Q-0.1 -1.15 0 -1.15 Q0.1 -1.15 0.11 -1.05 Z', C.almagra, 0.8) + L(0.06, -1.06, 0.18, -1.05, 2, C.almagra)
+        + O(0.36, -0.1, 0.1, C.albero, 1) + P('M0.26 -0.1 Q0.36 -0.06 0.46 -0.1 M0.36 -0.2 Q0.33 -0.1 0.36 0', 'none', 0.6),
+      planta: () => E(-0.19, 0.05, 0.05, 0.07, C.azulClaro, 0.6) + E(0.19, 0.05, 0.05, 0.07, C.azulClaro, 0.6) + E(0, 0, 0.18, 0.11, C.azulClaro, 1) + O(0, 0, 0.09, C.almagra, 1) + O(0.32, 0.18, 0.09, C.albero, 0.8) },
     { id: 'turista', nombre: 'Turista con cámara', epoca: 'Sevilla, 2005',
-      lado: () => piernas(-0.85, '#a87c52') + R(-0.16, -1.38, 0.32, 0.56, C.cal, 1) + R(-0.3, -1.36, 0.14, 0.42, C.verde, 1) + L(0.16, -1.3, 0.26, -1.42, 1.4) + R(0.2, -1.5, 0.16, 0.1, C.sombra, 0.8)
-        + cab(-1.54, piel[0]) + P('M-0.12 -1.6 Q0 -1.72 0.12 -1.6 L0.22 -1.58', C.albero, 1),
-      planta: () => R(-0.18, 0.08, 0.36, 0.14, C.verde, 1) + arriba(C.cal, C.albero) },
+      lado: () => piernas(-0.55, piel[0]) + R(-0.12, -0.16, 0.08, 0.1, C.cal, 0.6) + R(0.04, -0.16, 0.08, 0.1, C.cal, 0.6) + zapatos(C.madera)
+        + R(-0.15, -0.86, 0.3, 0.33, '#a87c52', 1) + L(0, -0.86, 0, -0.62, 0.6) + R(-0.3, -1.36, 0.13, 0.44, C.verde, 1) + R(-0.28, -1.0, 0.09, 0.1, 'none', 0.6)
+        + R(-0.17, -1.38, 0.34, 0.54, C.cal, 1) + L(-0.13, -1.38, -0.13, -1.0, 1.4, C.verde) + L(0.13, -1.38, 0.13, -1.0, 1.4, C.verde)
+        + P('M-0.05 -1.38 L0.03 -1.08 L0.08 -1.38', 'none', 0.7) + R(-0.02, -1.12, 0.14, 0.09, C.sombra, 0.8) + O(0.05, -1.075, 0.025, C.azulClaro, 0.6)
+        + brazo(-0.17, -1.33, -0.23, -1.08, -0.25, -0.88, C.cal, piel[0]) + brazo(0.17, -1.33, 0.28, -1.15, 0.24, -1.0, C.cal, piel[0]) + P('M0.18 -1.06 l0.08 -0.06 l0.08 0.06 l0.08 -0.06 v0.12 l-0.08 0.06 l-0.08 -0.06 l-0.08 0.06 Z', C.cal, 0.6)
+        + cara(-1.54, piel[0]) + R(-0.085, -1.565, 0.17, 0.04, C.sombra, 0.6) + P('M-0.16 -1.6 Q-0.12 -1.6 -0.1 -1.72 L0.1 -1.72 Q0.12 -1.6 0.16 -1.6 Z', C.albero, 0.8),
+      planta: () => R(-0.18, 0.08, 0.36, 0.14, C.verde, 1) + arriba(C.cal, C.albero) + O(0, 0, 0.16, 'none', 0.8, C.albero) },
     { id: 'futurista', nombre: 'Habitante de 2126', epoca: 'Sevilla, 2126',
-      lado: () => piernas(-0.85, C.azul) + P('M-0.17 -0.82 L-0.15 -1.4 L0.15 -1.4 L0.17 -0.82 Z', C.azul, 1) + L(-0.15, -1.1, 0.15, -1.1, 1.6, C.led) + brazos(-1.32, C.azul)
-        + cab(-1.56, piel[3]) + R(-0.1, -1.6, 0.22, 0.06, C.led, 0.6, C.led) + `<ellipse cx="0" cy="0.02" rx="0.3" ry="0.04" fill="${C.led}" opacity="0.5"/>`,
-      planta: () => O(0, 0, 0.32, 'none', 1, C.led) + arriba(C.azul, piel[3]) }
+      lado: () => `<ellipse cx="0" cy="0.02" rx="0.32" ry="0.05" fill="${C.led}" opacity="0.45"/>` + E(0, 0.01, 0.24, 0.03, '#123a36', 0.8, C.led)
+        + pantalon(-0.85, C.azul) + R(-0.15, -0.22, 0.12, 0.17, C.zinc, 0.8) + R(0.03, -0.22, 0.12, 0.17, C.zinc, 0.8)
+        + P('M-0.17 -1.4 L-0.16 -0.82 L0.16 -0.82 L0.17 -1.4 Z', C.azul, 1) + L(0, -1.38, 0, -0.84, 1.4, C.led) + L(-0.16, -0.95, 0.16, -0.95, 1.6, C.led) + E(-0.17, -1.38, 0.06, 0.03, C.zinc, 0.8) + E(0.17, -1.38, 0.06, 0.03, C.zinc, 0.8)
+        + brazo(-0.17, -1.34, -0.23, -1.08, -0.25, -0.86, C.azul, piel[3]) + brazo(0.17, -1.34, 0.28, -1.18, 0.33, -1.25, C.azul, piel[3])
+        + `<rect x="0.3" y="-1.55" width="0.26" height="0.18" fill="${C.azulClaro}" fill-opacity="0.35" stroke="${C.azul}" stroke-width="0.8" stroke-dasharray="2 1.5"/>` + L(0.33, -1.5, 0.5, -1.5, 0.5, C.azul) + L(0.33, -1.45, 0.45, -1.45, 0.5, C.azul)
+        + cara(-1.56, piel[3]) + R(-0.105, -1.6, 0.21, 0.05, C.led, 0.6, C.led) + P('M-0.04 -1.66 Q0 -1.76 0.04 -1.66 Z', C.sombra, 0.6),
+      planta: () => O(0, 0, 0.32, 'none', 1, C.led) + arriba(C.azul, piel[3]) + L(-0.11, -0.04, 0.11, -0.04, 1.6, C.led) }
   ];
 
   const panos = [
